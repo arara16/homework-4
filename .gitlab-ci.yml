@@ -1,8 +1,0 @@
-variables:
-  API_TOKEN: $DEPLOYMENT_TOKEN
-  deploy:
-   image: registry.gitlab.com/static-web-apps/azure-static-web-apps-deploy:latest
-   script:
-     - /scripts/deploy.sh
-   rules:
-     - if: $CI_COMMIT_BRANCH == "main"
