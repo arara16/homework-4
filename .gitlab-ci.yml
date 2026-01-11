@@ -1,11 +1,9 @@
 variables:
-    SWA_RESOURCE_ID: ""  # Optional
-      SWA_RESOURCE_GROUP: "your-rg"  # From Azure
-        API_TOKEN: $DEPLOYMENT_TOKEN
+    API_TOKEN: $DEPLOYMENT_TOKEN
 
-        deploy:
-          image: registry.gitlab.com/static-web-apps/azure-static-web-apps-deploy:latest
-            script:
-                - /scripts/deploy.sh
-                  rules:
-                      - if: $CI_COMMIT_BRANCH == "main"
+    deploy:
+      image: registry.gitlab.com/static-web-apps/azure-static-web-apps-deploy:latest
+        script:
+            - /scripts/deploy.sh
+              rules:
+                  - if: $CI_COMMIT_BRANCH == "main"
