@@ -1,3 +1,4 @@
+
 services:
   price-service:
     build:
