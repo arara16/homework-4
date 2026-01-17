@@ -1,3 +1,4 @@
+version: '3.8'
 
 services:
   price-service:
@@ -59,6 +60,19 @@ services:
       retries: 3
     depends_on:
       - price-service
+    networks:
+      - cryptovault-network
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - price-service
+      - ta-service
+      - prediction-service
     networks:
       - cryptovault-network
     restart: unless-stopped
