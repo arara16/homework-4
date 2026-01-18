@@ -3,64 +3,198 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CryptoVault Analytics - Homework 3</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <title>CryptoVault Dashboard</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🔐 CryptoVault Analytics</h1>
-            <p>Homework 3 - Technical Analysis, LSTM Prediction & Sentiment Analysis</p>
+            <h1>🔐 CryptoVault</h1>
+            <p>Microservices-Based Analysis</p>
             <nav>
-                <button onclick="showScreen('dashboard')" class="nav-btn">Dashboard</button>
-                <button onclick="showScreen('symbols')" class="nav-btn">Symbols</button>
+                <button class="nav-btn" onclick="showScreen('dashboard')">📊 Dashboard</button>
+                <button class="nav-btn" onclick="showScreen('symbols')">💰 Symbols</button>
+                <button class="nav-btn" onclick="showScreen('analysis')">📈 Analysis</button>
             </nav>
         </header>
 
         <div id="dashboard" class="screen">
-            <h2>📊 Dashboard</h2>
-            <div id="summary" class="summary-box">
-                <p>Loading market summary...</p>
+            <h2>Dashboard</h2>
+            <div id="serviceStatus" class="service-status">
+                <div class="status-box">
+                    <h3>Price Service</h3>
+                    <div id="priceStatus" class="status-indicator"></div>
+                    <p>Port 5001</p>
+                </div>
+                <div class="status-box">
+                    <h3>TA Service</h3>
+                    <div id="taStatus" class="status-indicator"></div>
+                    <p>Port 5002</p>
+                </div>
+                <div class="status-box">
+                    <h3>Prediction Service</h3>
+                    <div id="predictionStatus" class="status-indicator"></div>
+                    <p>Port 5003</p>
+                </div>
+                <div class="status-box">
+                    <h3>API Gateway</h3>
+                    <div id="gatewayStatus" class="status-indicator"></div>
+                    <p>Port 8080</p>
+                </div>
             </div>
+            <div id="summary" class="summary-box"></div>
         </div>
 
         <div id="symbols" class="screen hidden">
-            <h2>💰 Cryptocurrency Symbols</h2>
+            <h2>Available Symbols</h2>
             <div class="table-container">
                 <table id="symbolTable">
                     <thead>
                         <tr>
-                            <th>#</th>
                             <th>Symbol</th>
-                            <th>Price</th>
-                            <th>24h Change</th>
-                            <th>24h Volume</th>
-                            <th>Trades</th>
-                            <th>Actions</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr><td colspan="7">Loading symbols...</td></tr>
+                        <tr><td colspan="2" style="text-align: center;">Loading...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
         <div id="analysis" class="screen hidden">
-            <h2>📈 Analysis for <span id="analysisSymbol"></span></h2>
-            <button onclick="showScreen('symbols')" class="back-btn">← Back to Symbols</button>
-            <div id="analysisContent" class="analysis-content">
-                <p>Loading analysis...</p>
-            </div>
+            <h2>Analysis</h2>
+            <label for="symbolSelect">Select Symbol:</label>
+            <select id="symbolSelect" onchange="loadAnalysis()">
+                <option value="">-- Choose a symbol --</option>
+            </select>
+            <div id="analysisContent" class="analysis-content"></div>
         </div>
 
         <footer>
-            <p>Team: Dragana Niseva (236041), Dardan Mehmedi (231534), Dino Stojkoski (211226)</p>
-            <p>Software Design and Architecture - Homework 3 - December 2025</p>
+            <p>🚀 HW4: Microservices Architecture | Frontend | Price | TA | Prediction | Gateway</p>
         </footer>
     </div>
 
-    <script src="/static/app.js"></script>
+    <script>
+        const API_GATEWAY = 'http://localhost:8080/api';
+        
+        async function checkHealth(port) {
+            try {
+                const url = port === 8080 ? API_GATEWAY + '/health' : 'http://localhost:' + port + '/api/health';
+                const response = await fetch(url, {mode: 'cors'});
+                return response.ok;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        async function checkServiceHealth() {
+            const prices = [
+                ['priceStatus', 5001],
+                ['taStatus', 5002],
+                ['predictionStatus', 5003],
+                ['gatewayStatus', 8080]
+            ];
+            
+            for (let [id, port] of prices) {
+                const healthy = await checkHealth(port);
+                const el = document.getElementById(id);
+                if (healthy) {
+                    el.className = 'status-indicator healthy';
+                    el.textContent = '✅ Healthy';
+                } else {
+                    el.className = 'status-indicator unhealthy';
+                    el.textContent = '❌ Down';
+                }
+            }
+        }
+
+        async function fetchSymbols() {
+            try {
+                const response = await fetch(API_GATEWAY + '/symbols');
+                return response.ok ? await response.json() : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        async function getData(endpoint, symbol) {
+            try {
+                const response = await fetch(API_GATEWAY + endpoint + '/' + symbol);
+                return response.ok ? await response.json() : null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function showScreen(name) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+            document.getElementById(name).classList.remove('hidden');
+            if (name === 'dashboard') loadDashboard();
+            else if (name === 'symbols') loadSymbols();
+        }
+
+        async function loadDashboard() {
+            await checkServiceHealth();
+            const symbols = await fetchSymbols();
+            const html = symbols.length > 0 
+                ? '<h3>📊 Available Symbols: ' + symbols.length + '</h3><p>' + symbols.join(', ') + '</p>'
+                : '<h3>⚠️ No data available</h3>';
+            document.getElementById('summary').innerHTML = html;
+        }
+
+        async function loadSymbols() {
+            const symbols = await fetchSymbols();
+            const tbody = document.querySelector('#symbolTable tbody');
+            tbody.innerHTML = '';
+            if (symbols.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="2">No symbols</td></tr>';
+                return;
+            }
+            symbols.forEach(s => {
+                const row = tbody.insertRow();
+                row.innerHTML = '<td>' + s + '</td><td><button onclick="selectSymbol(\'' + s + '\')">Analyze</button></td>';
+            });
+            const select = document.getElementById('symbolSelect');
+            select.innerHTML = '<option>-- Choose --</option>';
+            symbols.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.text = s;
+                select.appendChild(opt);
+            });
+        }
+
+        async function loadAnalysis() {
+            const symbol = document.getElementById('symbolSelect').value;
+            if (!symbol) return;
+            document.getElementById('analysisContent').innerHTML = '⏳ Loading...';
+            const [prices, ta, pred] = await Promise.all([
+                getData('/prices', symbol),
+                getData('/technical-analysis', symbol),
+                getData('/predict', symbol)
+            ]);
+            let html = '<h3>' + symbol + '</h3>';
+            if (prices) html += '<div class="analysis-section"><h4>💰 Price</h4><pre>' + JSON.stringify(prices, null, 2) + '</pre></div>';
+            if (ta) html += '<div class="analysis-section"><h4>📊 TA</h4><pre>' + JSON.stringify(ta, null, 2) + '</pre></div>';
+            if (pred) html += '<div class="analysis-section"><h4>🤖 Prediction</h4><pre>' + JSON.stringify(pred, null, 2) + '</pre></div>';
+            document.getElementById('analysisContent').innerHTML = html;
+        }
+
+        function selectSymbol(s) {
+            document.getElementById('symbolSelect').value = s;
+            showScreen('analysis');
+            loadAnalysis();
+        }
+
+        setInterval(() => {
+            if (!document.getElementById('dashboard').classList.contains('hidden')) {
+                checkServiceHealth();
+            }
+        }, 5000);
+
+        loadDashboard();
+    </script>
 </body>
 </html>

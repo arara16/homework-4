@@ -3,7 +3,7 @@ let chartInstances = {};
 
 async function fetchSymbols() {
     try {
-        const response = await fetch('http://localhost:5001/api/symbols');
+        const response = await fetch('/api/symbols');
         if (!response.ok) {
             console.error('Failed to fetch symbols');
             return [];
