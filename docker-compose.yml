@@ -1,120 +1,53 @@
-version: '3.9'
-
+version: "3.9"
 services:
-  postgres:
-    image: postgres:14-alpine
-    container_name: cryptovault-postgres
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-cryptovault}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_123}
-      POSTGRES_DB: ${POSTGRES_DB:-cryptovault_db}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cryptovault}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - cryptovault
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    container_name: cryptovault-redis
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - cryptovault
-    restart: unless-stopped
-
-  price-service:
-    build:
-      context: ./services/price_service
-      dockerfile: Dockerfile
-    container_name: cryptovault-price-service
-    ports:
-      - "5001:5001"
-    environment:
-      FLASK_ENV: ${FLASK_ENV:-production}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      DEBUG: "false"
-    depends_on:
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5001/api/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    networks:
-      - cryptovault
-    restart: unless-stopped
-
-  ta-service:
-    build:
-      context: ./services/ta_service
-      dockerfile: Dockerfile
-    container_name: cryptovault-ta-service
-    ports:
-      - "5002:5002"
-    environment:
-      FLASK_ENV: ${FLASK_ENV:-production}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      DEBUG: "false"
-    depends_on:
-      redis:
-        condition: service_healthy
-      price-service:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5002/api/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    networks:
-      - cryptovault
-    restart: unless-stopped
-
   prediction-service:
-    build:
-      context: ./services/prediction_service
-      dockerfile: Dockerfile
-    container_name: cryptovault-prediction-service
+    build: ./services/prediction_service
+    container_name: homework-4-prediction-service
     ports:
       - "5003:5003"
-    environment:
-      FLASK_ENV: ${FLASK_ENV:-production}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      PORT: 5003
-      DEBUG: "false"
-    depends_on:
-      redis:
-        condition: service_healthy
-      price-service:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5003/api/health"]
-      interval: 10s
-      timeout: 5s
+      interval: 30s
+      timeout: 10s
       retries: 3
-    networks:
-      - cryptovault
-    restart: unless-stopped
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
 
-volumes:
-  postgres_data:
+  price-service:
+    build: ./services/price_service
+    container_name: homework-4-price-service
+    ports:
+      - "5001:5001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
 
-networks:
-  cryptovault:
-    driver: bridge
+  ta-service:
+    build: ./services/ta_service
+    container_name: homework-4-ta-service
+    ports:
+      - "5002:5002"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
+
+  frontend:
+    build: ./frontend
+    container_name: homework-4-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - prediction-service
+      - price-service
+      - ta-service
