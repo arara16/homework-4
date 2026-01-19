@@ -1,19 +1,6 @@
-version: "3.9"
-services:
-  prediction-service:
-    build: ./services/prediction_service
-    container_name: homework-4-prediction-service
-    ports:
-      - "5003:5003"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5003/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    environment:
-      - FLASK_APP=app.py
-      - FLASK_ENV=production
+version: '3.8'
 
+services:
   price-service:
     build: ./services/price_service
     container_name: homework-4-price-service
@@ -42,11 +29,25 @@ services:
       - FLASK_APP=app.py
       - FLASK_ENV=production
 
+  prediction-service:
+    build: ./services/prediction_service
+    container_name: homework-4-prediction-service
+    ports:
+      - "5003:5003"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5003/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
+
   frontend:
     build: ./frontend
     container_name: homework-4-frontend
     ports:
-      - "80:80"
+      - "3000:80"
     depends_on:
       - prediction-service
       - price-service
