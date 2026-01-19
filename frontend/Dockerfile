@@ -8,4 +8,4 @@ COPY . .
 
 EXPOSE 80
 
-CMD ["http-server", "-p", "80", "-c-1"]
+CMD ["http-server", ".", "-p", "80", "-c-1"]
