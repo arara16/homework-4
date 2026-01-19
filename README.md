@@ -1,93 +1,170 @@
-# homework-4
+# Проект – Насоки за стартување (Домашна 1, Домашна 2, Домашна 3 и Домашна 4)
 
-...
+Овој репозиториум содржи:
+- **Домашна 1:** pipe-and-filter проток за преземање/форматирање на податоци и полнење SQLite база
+- **Домашна 2:** технички прототип (React) + Django REST backend кој ги чита податоците од истата база
+- **Домашна 3:** анализа и визуелизација (Technical analysis, LSTM предвидување и On-Chain + сентимент анализа) интегрирани во апликацијата
+- **Домашна 4:** рефакторирање на архитектурата во микросервиси (FastAPI) и интеграција преку Django proxy
 
-## Getting started
+---
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+Една база за сите:
+- Единствена база: `Домашна 1/crypto.db`
+- Pipeline (Домашна 1) **ПИШУВА** во оваа база.
+- Django backend (Домашна 2, 3, 4) **ЧИТА** од истата база.
+- Микросервисите (Домашна 4) исто така пристапуваат до `crypto.db` за анализа.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+---
 
-## Add your files
+1) Претпоставки/потреби
+- Инсталиран **Python 3.11+** (Windows/PowerShell)
+- **Node.js 18+** (за фронтенд)
+- Интернет конекција (CoinGecko REST, Yahoo Finance API)
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+---
 
+2) Како да се стартува Домашна 1 (pipeline)?
+Локација: `Домашна 1`
+
+PowerShell команди (од коренот на репото):
+### 2.1 (Опционално) Креирај виртуелно окружување
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 ```
-cd existing_repo
-git remote add origin https://gitlab.finki.ukim.mk/236041/homework-4.git
-git branch -M main
-git push -uf origin main
+
+### 2.2 Инсталирај зависности за филтрите (ако е потребно):
+
+```powershell
+pip install -r "Домашна 1\requirements.txt"
 ```
 
-## Integrate with your tools
+### 2.3 Стартувај цел pipeline (Filter1 → Filter2 → Filter3 + тајмер)
 
-- [ ] [Set up project integrations](https://gitlab.finki.ukim.mk/236041/homework-4/-/settings/integrations)
+```powershell
+cd "Домашна 1"
+python run_all_filters.py
+```
 
-## Collaborate with your team
+Што прави pipeline-от:
+- Filter 1: автоматски презема листа на ТОП 1000 активни крипто симболи (филтрира ликвидност/quote и верифицира пазари).
+- Filter 2: проверува до кој датум има податоци, презема 15 години OHLCV ако нема, додава 24h метрики, ликвидност.
+- Filter 3: пополнува недостигачи денови по пазари и (ако постои USDT‑M фјучерс пар) снима моментален извештај за ликвидации.
+- Сè се запишува во `Домашна 1/crypto.db`.
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+Брзи проверки во SQLite (опционално):
 
-## Test and Deploy
+```sql
+sqlite3 "Домашна 1/crypto.db"
+.tables
+SELECT COUNT(*) FROM prices;
+.quit
+```
+---
+3) Како да се стартува Домашна 2 (backend + UI)?
 
-Use the built-in continuous integration in GitLab.
+### 3.1 Django backend
+Локација: `Домашна 2/tech prototype/backend`
+PowerShell команди:
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+```powershell
+cd "Домашна 2/tech prototype/backend"
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python manage.py runserver
+```
 
-***
+Backend слуша на http://localhost:8000 и чита од „Домашна 1/crypto.db“.
+Ендпоинти:
+- GET /api/health/
+- GET /api/summary/
+- GET /api/tickers/?limit=50
+- GET /api/candles/BTC/?quote=USDT&limit=120
 
-# Editing this README
+### 3.2 React фронтенд
+Локација: Домашна 2/tech prototype
+PowerShell команди:
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+```powershell
+cd "Домашна 2/tech prototype"
+npm install
+npm start
+```
 
-## Suggestions for a good README
+---
+4) Како да се стартува Домашна 3?
+Домашна 3 **нема посебен сервер** – логиката е интегрирана во постоечкиот Django backend и React UI.
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+### 4.1 Django backend
+Локација: `Домашна 3/backend`
+PowerShell команди:
 
-## Name
-Choose a self-explaining name for your project.
+```powershell
+cd "Домашна 3/backend"
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python manage.py runserver
+```
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+### 4.2 React фронтенд
+Локација: Домашна 3/frontend
+PowerShell команди:
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+```powershell
+cd "Домашна 3/frontend"
+npm install
+npm start
+```
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+UI слуша на http://localhost:3000 и прави повици кон backend-от на http://localhost:8000/api.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+---
+5) Како да се стартува Домашна 4 (Microservices)?
+Во оваа фаза апликацијата е поделена на 4 микросервиси базирани на **FastAPI**.
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+### 5.1 Стартување на Микросервисите
+Потребно е да се стартуваат 4 посебни сервиси во различни терминали:
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+```powershell
+# 1. Technical Analysis Service (Port 8001)
+cd "Домашна 4\technical-analysis-service"
+pip install -r requirements.txt
+uvicorn main:app --port 8001
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+# 2. LSTM Prediction Service (Port 8002)
+cd "Домашна 4\lstm-service"
+pip install -r requirements.txt
+uvicorn main:app --port 8002
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+# 3. Sentiment Analysis Service (Port 8003)
+cd "Домашна 4\sentiment-analysis-service"
+pip install -r requirements.txt
+uvicorn main:app --port 8003
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+# 4. Notification Service (Port 8004)
+cd "Домашна 4\notification-service"
+pip install -r requirements.txt
+uvicorn main:app --port 8004
+```
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+### 5.2 Django Backend (Proxy)
+Локација: `Домашна 4/backend`
+Django сега служи како **Proxy** кој ги препраќа барањата до соодветните микросервиси.
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+```powershell
+cd "Домашна 4/backend"
+pip install -r requirements.txt
+python manage.py runserver 8000
+```
 
-## License
-For open source projects, say how it is licensed.
+### 5.3 React Frontend
+Локација: Домашна 4/frontend
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+```powershell
+cd "Домашна 4/frontend"
+npm install
+npm start
+```
