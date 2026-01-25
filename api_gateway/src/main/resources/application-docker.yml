@@ -1,0 +1,42 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: price-service
+          uri: http://price-service:5001
+          predicates:
+            - Path=/api/prices/**
+          filters:
+            - RewritePath=/api/(?<segment>.*), /api/$\{segment}
+
+        - id: ta-service
+          uri: http://ta-service:5002
+          predicates:
+            - Path=/api/technical-analysis/**
+          filters:
+            - RewritePath=/api/(?<segment>.*), /api/$\{segment}
+
+        - id: prediction-service
+          uri: http://prediction-service:5003
+          predicates:
+            - Path=/api/predict/**,/api/symbols/**
+          filters:
+            - RewritePath=/api/(?<segment>.*), /api/$\{segment}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG

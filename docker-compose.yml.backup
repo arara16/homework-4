@@ -43,36 +43,12 @@ services:
       - FLASK_APP=app.py
       - FLASK_ENV=production
 
-  api-gateway:
-    build: ./api_gateway
-    container_name: homework-4-api-gateway
-    ports:
-      - "8080:8080"
-    depends_on:
-      - prediction-service
-      - price-service
-      - ta-service
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CLOUD_GATEWAY_ROUTES_0_ID=price-service
-      - SPRING_CLOUD_GATEWAY_ROUTES_0_URI=http://price-service:5001
-      - SPRING_CLOUD_GATEWAY_ROUTES_0_PREDICATES_0=Path=/api/prices/**
-      - SPRING_CLOUD_GATEWAY_ROUTES_1_ID=ta-service
-      - SPRING_CLOUD_GATEWAY_ROUTES_1_URI=http://ta-service:5002
-      - SPRING_CLOUD_GATEWAY_ROUTES_1_PREDICATES_0=Path=/api/technical-analysis/**
-      - SPRING_CLOUD_GATEWAY_ROUTES_2_ID=prediction-service
-      - SPRING_CLOUD_GATEWAY_ROUTES_2_URI=http://prediction-service:5003
-      - SPRING_CLOUD_GATEWAY_ROUTES_2_PREDICATES_0=Path=/api/predict/**,/api/symbols/**
-
   frontend:
     build: ./frontend
     container_name: homework-4-frontend
     ports:
       - "80:80"
     depends_on:
-      - api-gateway
       - prediction-service
       - price-service
       - ta-service
-    environment:
-      - REACT_APP_API_URL=http://localhost:8080/api
