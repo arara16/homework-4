@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   price-service:
-    image: yourusername/homework-4-price-service:latest
+    image: cryptovault-hw4/price-service:latest
     container_name: homework-4-price-service
     restart: unless-stopped
     environment:
@@ -12,7 +12,7 @@ services:
       - app-network
 
   ta-service:
-    image: yourusername/homework-4-ta-service:latest
+    image: cryptovault-hw4/ta-service:latest
     container_name: homework-4-ta-service
     restart: unless-stopped
     environment:
@@ -22,7 +22,7 @@ services:
       - app-network
 
   prediction-service:
-    image: yourusername/homework-4-prediction-service:latest
+    image: cryptovault-hw4/prediction-service:latest
     container_name: homework-4-prediction-service
     restart: unless-stopped
     environment:
@@ -32,7 +32,7 @@ services:
       - app-network
 
   api-gateway:
-    image: yourusername/homework-4-api-gateway:latest
+    image: cryptovault-hw4/api-gateway:latest
     container_name: homework-4-api-gateway
     restart: unless-stopped
     ports:
@@ -50,7 +50,7 @@ services:
       - app-network
 
   frontend:
-    image: yourusername/homework-4-frontend:latest
+    image: cryptovault-hw4/frontend:latest
     container_name: homework-4-frontend
     restart: unless-stopped
     ports:
