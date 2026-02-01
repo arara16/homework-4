@@ -7,26 +7,41 @@ spring:
   cloud:
     gateway:
       routes:
+        # Homework 3 compatible routes
+        - id: price-symbols
+          uri: http://price-service:5001
+          predicates:
+            - Path=/api/symbols/**
+          filters:
+            - RewritePath=/api/symbols/(?<segment>.*), /api/symbols/$\{segment}
+        
+        - id: price-analysis
+          uri: http://price-service:5001
+          predicates:
+            - Path=/api/analysis/**
+          filters:
+            - RewritePath=/api/analysis/(?<segment>.*), /api/analysis/$\{segment}
+        
         - id: price-service
           uri: http://price-service:5001
           predicates:
             - Path=/api/prices/**
           filters:
-            - RewritePath=/api/(?<segment>.*), /api/$\{segment}
+            - RewritePath=/api/prices/(?<segment>.*), /api/prices/$\{segment}
 
         - id: ta-service
           uri: http://ta-service:5002
           predicates:
             - Path=/api/technical-analysis/**
           filters:
-            - RewritePath=/api/(?<segment>.*), /api/$\{segment}
+            - RewritePath=/api/technical-analysis/(?<segment>.*), /api/technical-analysis/$\{segment}
 
         - id: prediction-service
           uri: http://prediction-service:5003
           predicates:
-            - Path=/api/predict/**,/api/symbols/**
+            - Path=/api/predict/**
           filters:
-            - RewritePath=/api/(?<segment>.*), /api/$\{segment}
+            - RewritePath=/api/predict/(?<segment>.*), /api/predict/$\{segment}
 
 management:
   endpoints:

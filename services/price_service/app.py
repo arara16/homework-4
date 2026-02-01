@@ -243,6 +243,181 @@ def health():
     })
 
 
+@app.route('/api/symbols', methods=['GET'])
+def get_symbols():
+    """Get all available symbols with their latest data - matches Homework 3 API"""
+    try:
+        symbols = []
+        
+        # Get data for all available symbols
+        for symbol in DATA_FILES.keys():
+            result = manager.get_price_data(symbol, "1h", 1)
+            
+            if "data" in result and result["data"]:
+                latest = result["data"][-1]
+                
+                # Add volume and trade count if available
+                volume = latest.get("quote_volume", latest.get("volume", 0))
+                trades = latest.get("count", latest.get("number_of_trades", 0))
+                
+                symbol_data = {
+                    "symbol": symbol,
+                    "close": latest.get("close", 0),
+                    "open": latest.get("open", latest.get("close", 0)),
+                    "high": latest.get("high", latest.get("close", 0)),
+                    "low": latest.get("low", latest.get("close", 0)),
+                    "quote_volume": volume,
+                    "count": trades,
+                    "price_change_percent": "0.00",  # Would be calculated from historical data
+                    "time": latest.get("time", 0)
+                }
+                symbols.append(symbol_data)
+        
+        # Sort by volume (descending) like Homework 3
+        symbols.sort(key=lambda x: float(x.get("quote_volume", 0)), reverse=True)
+        
+        return jsonify(symbols)
+        
+    except Exception as e:
+        logger.error(f"Error fetching symbols: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/symbols/<symbol>', methods=['GET'])
+def get_symbol_details(symbol):
+    """Get detailed data for a specific symbol - matches Homework 3 API"""
+    try:
+        limit = int(request.args.get('limit', 50))
+        result = manager.get_price_data(symbol, "1h", limit)
+        
+        if "error" in result:
+            return jsonify(result), 404
+        
+        return jsonify(result["data"])
+        
+    except Exception as e:
+        logger.error(f"Error fetching symbol details for {symbol}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/analysis/technical/<symbol>', methods=['GET'])
+def get_analysis_technical(symbol):
+    """Proxy technical analysis - routes to TA service"""
+    try:
+        import requests
+        response = requests.get(f"http://ta-service:5002/api/technical-analysis/{symbol}", timeout=10)
+        if response.status_code == 200:
+            return jsonify(response.json())
+        else:
+            return jsonify({"error": "Technical analysis service unavailable"}), 502
+    except Exception as e:
+        logger.error(f"Error fetching technical analysis for {symbol}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/analysis/lstm/<symbol>', methods=['GET'])
+def get_analysis_lstm(symbol):
+    """Proxy LSTM prediction - routes to prediction service"""
+    try:
+        import requests
+        response = requests.get(f"http://prediction-service:5003/api/predict/{symbol}", timeout=10)
+        if response.status_code == 200:
+            return jsonify(response.json())
+        else:
+            return jsonify({"error": "Prediction service unavailable"}), 502
+    except Exception as e:
+        logger.error(f"Error fetching LSTM prediction for {symbol}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/analysis/sentiment/<symbol>', methods=['GET'])
+def get_analysis_sentiment(symbol):
+    """Mock sentiment analysis - matches Homework 3 structure"""
+    try:
+        sentiment_data = {
+            "combined_score": 0.65,
+            "combined_signal": "NEUTRAL",
+            "sentiment_analysis": {
+                "sentiment_class": "neutral",
+                "average_sentiment": 0.65,
+                "news_count": 25
+            },
+            "onchain_metrics": {
+                "active_addresses": 125000,
+                "transaction_count": 45000,
+                "nvt_ratio": 45.2,
+                "mvrv": 1.8
+            },
+            "onchain_analysis": {
+                "signals": ["Moderate activity", "Neutral sentiment"]
+            }
+        }
+        return jsonify(sentiment_data)
+    except Exception as e:
+        logger.error(f"Error fetching sentiment analysis for {symbol}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/analysis/complete/<symbol>', methods=['GET'])
+def get_analysis_complete(symbol):
+    """Get complete analysis - matches Homework 3 structure"""
+    try:
+        import requests
+        
+        # Get technical analysis
+        tech_response = requests.get(f"http://ta-service:5002/api/technical-analysis/{symbol}", timeout=10)
+        technical = tech_response.json() if tech_response.status_code == 200 else {"error": "Technical analysis unavailable"}
+        
+        # Get LSTM prediction
+        lstm_response = requests.get(f"http://prediction-service:5003/api/predict/{symbol}", timeout=10)
+        lstm = lstm_response.json() if lstm_response.status_code == 200 else {"error": "LSTM prediction unavailable"}
+        
+        # Mock sentiment analysis
+        sentiment = {
+            "combined_score": 0.65,
+            "combined_signal": "NEUTRAL",
+            "sentiment_analysis": {
+                "sentiment_class": "neutral",
+                "average_sentiment": 0.65,
+                "news_count": 25
+            },
+            "onchain_metrics": {
+                "active_addresses": 125000,
+                "transaction_count": 45000,
+                "nvt_ratio": 45.2,
+                "mvrv": 1.8
+            },
+            "onchain_analysis": {
+                "signals": ["Moderate activity", "Neutral sentiment"]
+            }
+        }
+        
+        # Generate final recommendation
+        final_recommendation = "HOLD"
+        
+        complete_analysis = {
+            "symbol": symbol,
+            "timestamp": datetime.now().isoformat(),
+            "technical_analysis": technical,
+            "lstm_prediction": lstm,
+            "sentiment_analysis": sentiment,
+            "final_recommendation": final_recommendation,
+            "charts": {
+                "price": {"labels": [], "datasets": []},
+                "technical": {"labels": [], "datasets": []},
+                "lstm": {"labels": [], "datasets": []},
+                "sentiment_gauge": {"score": 0.65, "label": "NEUTRAL", "color": "#FFA500"},
+                "signals_distribution": {"labels": ["BUY", "SELL", "HOLD"], "values": [1, 1, 1], "colors": ["#00FF00", "#FF0000", "#FFA500"]}
+            }
+        }
+        
+        return jsonify(complete_analysis)
+        
+    except Exception as e:
+        logger.error(f"Error fetching complete analysis for {symbol}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/prices/<symbol>', methods=['GET'])
 def get_prices(symbol):
     """Get OHLCV data for a symbol"""

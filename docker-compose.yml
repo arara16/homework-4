@@ -54,15 +54,6 @@ services:
       - ta-service
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CLOUD_GATEWAY_ROUTES_0_ID=price-service
-      - SPRING_CLOUD_GATEWAY_ROUTES_0_URI=http://price-service:5001
-      - SPRING_CLOUD_GATEWAY_ROUTES_0_PREDICATES_0=Path=/api/prices/**
-      - SPRING_CLOUD_GATEWAY_ROUTES_1_ID=ta-service
-      - SPRING_CLOUD_GATEWAY_ROUTES_1_URI=http://ta-service:5002
-      - SPRING_CLOUD_GATEWAY_ROUTES_1_PREDICATES_0=Path=/api/technical-analysis/**
-      - SPRING_CLOUD_GATEWAY_ROUTES_2_ID=prediction-service
-      - SPRING_CLOUD_GATEWAY_ROUTES_2_URI=http://prediction-service:5003
-      - SPRING_CLOUD_GATEWAY_ROUTES_2_PREDICATES_0=Path=/api/predict/**,/api/symbols/**
 
   frontend:
     build: ./frontend
