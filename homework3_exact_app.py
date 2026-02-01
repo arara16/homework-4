@@ -83,10 +83,41 @@ def extract_binance_data():
         return []
 
 def load_symbols():
-    """Load symbols - Homework 3 style with real Binance data"""
+    """Load symbols - Homework 3 style with real Binance data (only latest data per symbol)"""
     try:
-        # Extract fresh data from Binance
-        symbols_data = extract_binance_data()
+        # Get live ticker data for all symbols
+        live_data = get_live_ticker_data()
+        
+        symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT', 
+                   'SOLUSDT', 'DOGEUSDT', 'DOTUSDT', 'AVAXUSDT', 'MATICUSDT',
+                   'LINKUSDT', 'UNIUSDT', 'LTCUSDT', 'ATOMUSDT', 'XLMUSDC']
+        
+        symbols_data = []
+        
+        for symbol in symbols:
+            try:
+                if symbol in live_data:
+                    ticker = live_data[symbol]
+                    
+                    # Create single entry with latest data
+                    symbol_data = {
+                        'symbol': symbol,
+                        'time': int(datetime.now().timestamp() * 1000),
+                        'open': float(ticker.get('openPrice', 0)),
+                        'high': float(ticker.get('highPrice', 0)),
+                        'low': float(ticker.get('lowPrice', 0)),
+                        'close': float(ticker.get('lastPrice', 0)),
+                        'volume': float(ticker.get('volume', 0)),
+                        'quote_volume': float(ticker.get('quoteVolume', 0)),
+                        'count': int(ticker.get('count', 0)),
+                        'price_change_percent': str(ticker.get('priceChangePercent', '0.00'))
+                    }
+                    
+                    symbols_data.append(symbol_data)
+                    
+            except Exception as e:
+                print(f"Error processing data for {symbol}: {e}")
+                continue
         
         # Sort by volume (like Homework 3)
         symbols_data.sort(key=lambda x: float(x.get('quote_volume', 0)), reverse=True)
