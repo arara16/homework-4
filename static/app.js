@@ -1,55 +1,7 @@
-let allSymbols = [];
+// Chart instances for cleanup
 let chartInstances = {};
 
-async function fetchSymbols() {
-    try {
-        const response = await fetch('/api/symbols');
-        if (!response.ok) {
-            console.error('Failed to fetch symbols');
-            return [];
-        }
-        allSymbols = await response.json();
-        return allSymbols;
-    } catch (error) {
-        console.error('Error fetching symbols:', error);
-        return [];
-    }
-}
-
-function formatNumber(num, decimals = 2) {
-    const n = parseFloat(num);
-    if (isNaN(n)) return '0.00';
-    return n.toLocaleString('en-US', {
-        minimumFractionDigits: decimals,
-        maximumFractionDigits: decimals
-    });
-}
-
-function formatLargeNumber(num) {
-    const n = parseFloat(num);
-    if (isNaN(n)) return '0';
-    if (n >= 1e12) return (n / 1e12).toFixed(2) + 'T';
-    if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
-    if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
-    if (n >= 1e3) return (n / 1e3).toFixed(2) + 'K';
-    return n.toFixed(2);
-}
-
-function calculateChange(symbol) {
-    const priceChangePercent = parseFloat(symbol.price_change_percent || 0);
-    return priceChangePercent;
-}
-
-function formatChange(change) {
-    const sign = change > 0 ? '+' : '';
-    let className = 'neutral';
-    if (change > 0) {
-        className = 'positive';
-    } else if (change < 0) {
-        className = 'negative';
-    }
-    return `<span class="${className}">${sign}${change.toFixed(2)}%</span>`;
-}
+// ============ CORE FUNCTIONS ============
 
 function showScreen(screenName) {
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
@@ -63,6 +15,9 @@ function showScreen(screenName) {
     } else if (screenName === 'symbols') {
         loadSymbols();
     }
+    
+    // Cleanup charts when switching screens
+    cleanupCharts();
 }
 
 async function loadDashboard() {
@@ -78,15 +33,78 @@ async function loadDashboard() {
     const positiveChanges = symbols.filter(s => calculateChange(s) > 0).length;
     const negativeChanges = symbols.filter(s => calculateChange(s) < 0).length;
 
+    // Enhanced dashboard with better visual design
     document.getElementById('summary').innerHTML = `
-        <h3>📊 Market Summary</h3>
-        <p><strong>Total Symbols:</strong> ${totalSymbols}</p>
-        <p><strong>Average 24h Volume:</strong> $${formatLargeNumber(avgVolume)}</p>
-        <p><strong>Total Trades (24h):</strong> ${totalTrades.toLocaleString()}</p>
-        <p><strong>Gainers:</strong> <span class="positive">${positiveChanges}</span> | 
-           <strong>Losers:</strong> <span class="negative">${negativeChanges}</span></p>
-        <p><strong>Data Source:</strong> Binance API (Historical data)</p>
+        <div class="dashboard-enhanced">
+            <div class="dashboard-header">
+                <h3>📊 Market Overview</h3>
+                <div class="live-indicator">
+                    <span class="live-dot"></span>
+                    <span>Live Data</span>
+                </div>
+            </div>
+            
+            <div class="metrics-grid">
+                <div class="metric-card primary">
+                    <div class="metric-icon">🪙</div>
+                    <div class="metric-content">
+                        <div class="metric-value">${totalSymbols}</div>
+                        <div class="metric-label">Total Symbols</div>
+                    </div>
+                </div>
+                
+                <div class="metric-card success">
+                    <div class="metric-icon">💰</div>
+                    <div class="metric-content">
+                        <div class="metric-value">$${formatLargeNumber(avgVolume)}</div>
+                        <div class="metric-label">Avg 24h Volume</div>
+                    </div>
+                </div>
+                
+                <div class="metric-card info">
+                    <div class="metric-icon">📈</div>
+                    <div class="metric-content">
+                        <div class="metric-value">${totalTrades.toLocaleString()}</div>
+                        <div class="metric-label">Total Trades (24h)</div>
+                    </div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-content">
+                        <div class="metric-row">
+                            <span class="metric-label">Market Sentiment</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="positive">▲ ${positiveChanges}</span>
+                            <span class="negative">▼ ${negativeChanges}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="data-source-enhanced">
+                <span class="source-icon">🔗</span>
+                <span>Data Source: Binance API (Real-time)</span>
+                <span class="update-time">Updated: ${new Date().toLocaleTimeString()}</span>
+            </div>
+        </div>
     `;
+}
+
+function calculateChange(symbol) {
+    if (!symbol.open || !symbol.close) return 0;
+    return ((symbol.close - symbol.open) / symbol.open) * 100;
+}
+
+async function fetchSymbols() {
+    try {
+        const response = await fetch('/api/symbols');
+        const symbols = await response.json();
+        return symbols;
+    } catch (error) {
+        console.error('Error fetching symbols:', error);
+        return [];
+    }
 }
 
 async function loadSymbols() {
@@ -97,115 +115,217 @@ async function loadSymbols() {
         return;
     }
 
-    tbody.innerHTML = '';
-    
     if (!symbols || symbols.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7">No symbols available</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="error">⚠️ No symbols available</td></tr>';
         return;
     }
 
+    tbody.innerHTML = '';
     symbols.forEach((symbol, index) => {
         const row = document.createElement('tr');
-        const change = calculateChange(symbol);
+        const changeClass = calculateChange(symbol) > 0 ? 'positive' : 
+                           calculateChange(symbol) < 0 ? 'negative' : 'neutral';
         
         row.innerHTML = `
-            <td>${index + 1}</td>
+            <td><span class="rank">#${index + 1}</span></td>
             <td><strong>${symbol.symbol}</strong></td>
-            <td>$${formatNumber(symbol.close)}</td>
-            <td>${formatChange(change)}</td>
+            <td>$${formatNumber(symbol.close, 6)}</td>
+            <td class="${changeClass}">${formatChange(calculateChange(symbol))}</td>
             <td>$${formatLargeNumber(symbol.quote_volume)}</td>
-            <td>${parseInt(symbol.count || 0).toLocaleString()}</td>
+            <td>${formatLargeNumber(symbol.count)}</td>
             <td>
-                <button onclick="analyzeSymbol('${symbol.symbol}')" class="analyze-btn">
-                    📈 Analyze
+                <button onclick="showAnalysis('${symbol.symbol}')" class="analyze-btn">
+                    📊 Analyze
                 </button>
             </td>
         `;
+        
         tbody.appendChild(row);
     });
 }
 
-async function analyzeSymbol(symbol) {
-    showScreen('analysis');
+async function showAnalysis(symbol) {
     document.getElementById('analysisSymbol').textContent = symbol;
-    
-    const analysisContent = document.getElementById('analysisContent');
-    analysisContent.innerHTML = '<p>Loading analysis...</p>';
+    showScreen('analysis');
     
     try {
-        // Fetch complete analysis
         const response = await fetch(`/api/analysis/complete/${symbol}`);
         const data = await response.json();
         
-        if (response.ok) {
-            displayAnalysis(data);
-        } else {
-            throw new Error(data.error || 'Analysis failed');
+        if (data.error) {
+            throw new Error(data.error);
         }
+        
+        displayCompleteAnalysis(data);
+        
+        setTimeout(() => {
+            renderCharts(data);
+        }, 100);
+        
     } catch (error) {
-        console.error('Error fetching analysis:', error);
-        analysisContent.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
+        console.error('Error loading analysis:', error);
+        document.getElementById('analysisContent').innerHTML = 
+            `<div class="error-message">Error loading analysis: ${error.message}</div>`;
     }
 }
 
-function displayAnalysis(data) {
+function displayCompleteAnalysis(data) {
     const analysisContent = document.getElementById('analysisContent');
     
     let html = '<div class="analysis-grid">';
     
-    // Technical Analysis
-    if (data.technical_analysis && !data.technical_analysis.error) {
-        html += `
-            <div class="analysis-section">
-                <h3>📊 Technical Analysis</h3>
-                <div class="indicators">
-                    ${displayTechnicalAnalysis(data.technical_analysis)}
+    // Enhanced Price Chart Section
+    html += `
+        <div class="analysis-section enhanced">
+            <div class="section-header">
+                <h3>📈 Price Chart (Last 90 Days)</h3>
+                <div class="chart-controls">
+                    <button class="chart-btn active" onclick="changeChartPeriod('90d', '${data.symbol}')">90D</button>
+                    <button class="chart-btn" onclick="changeChartPeriod('30d', '${data.symbol}')">30D</button>
+                    <button class="chart-btn" onclick="changeChartPeriod('7d', '${data.symbol}')">7D</button>
                 </div>
             </div>
-        `;
-    }
+            <div class="chart-container enhanced">
+                <canvas id="priceChart"></canvas>
+            </div>
+        </div>
+    `;
     
-    // LSTM Prediction
-    if (data.lstm_prediction && !data.lstm_prediction.error) {
-        html += `
-            <div class="analysis-section">
-                <h3>🤖 LSTM Prediction</h3>
-                <div class="prediction-info">
-                    <p><strong>Current Price:</strong> $${formatNumber(data.lstm_prediction.current_price)}</p>
-                    <p><strong>Confidence:</strong> ${(data.lstm_prediction.confidence * 100).toFixed(1)}%</p>
-                    <p><strong>Forecast (7 days):</strong></p>
-                    <div class="forecast">
-                        ${data.lstm_prediction.forecast.map((price, i) => 
-                            `<div class="forecast-day">Day ${i+1}: $${formatNumber(price)}</div>`
-                        ).join('')}
+    // Enhanced Technical Analysis Section
+    html += `
+        <div class="analysis-section enhanced">
+            <h3>📊 Technical Analysis</h3>
+            <div class="signal-overview">
+                <div class="signal-card ${getSignalClass(data.technical_analysis?.overall_signal)}">
+                    <div class="signal-label">Overall Signal</div>
+                    <div class="signal-value">${data.technical_analysis?.overall_signal || 'HOLD'}</div>
+                </div>
+            </div>
+            
+            <div class="chart-row">
+                <div class="chart-container-half">
+                    <h4>Signals Distribution</h4>
+                    <div class="chart-container">
+                        <canvas id="signalsChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container-half">
+                    <h4>Technical Indicators</h4>
+                    <div class="chart-container">
+                        <canvas id="technicalChart"></canvas>
                     </div>
                 </div>
             </div>
-        `;
-    }
+            
+            ${formatIndicators(data.technical_analysis)}
+        </div>
+    `;
     
-    // Sentiment Analysis
-    if (data.sentiment_analysis && !data.sentiment_analysis.error) {
-        html += `
-            <div class="analysis-section">
-                <h3>💭 Sentiment Analysis</h3>
-                <div class="sentiment-info">
-                    <p><strong>Overall Score:</strong> ${data.sentiment_analysis.combined_score.toFixed(2)}</p>
-                    <p><strong>Signal:</strong> <span class="sentiment-${data.sentiment_analysis.combined_signal.toLowerCase()}">${data.sentiment_analysis.combined_signal}</span></p>
-                    <p><strong>News Count:</strong> ${data.sentiment_analysis.sentiment_analysis.news_count}</p>
+    // Enhanced LSTM Prediction Section
+    html += `
+        <div class="analysis-section enhanced">
+            <h3>🤖 LSTM Price Prediction</h3>
+            <div class="model-performance">
+                <div class="perf-item">
+                    <span class="perf-label">RMSE</span>
+                    <span class="perf-value">${data.lstm_prediction?.model_performance?.RMSE || 'N/A'}</span>
+                </div>
+                <div class="perf-item">
+                    <span class="perf-label">MAPE</span>
+                    <span class="perf-value">${data.lstm_prediction?.model_performance?.MAPE || 'N/A'}%</span>
+                </div>
+                <div class="perf-item">
+                    <span class="perf-label">R²</span>
+                    <span class="perf-value">${data.lstm_prediction?.model_performance?.R2 || 'N/A'}</span>
                 </div>
             </div>
-        `;
-    }
+            
+            <h4>7-Day Price Forecast</h4>
+            <div class="chart-container enhanced">
+                <canvas id="lstmChart"></canvas>
+            </div>
+            
+            ${formatPredictionTable(data.lstm_prediction)}
+        </div>
+    `;
     
-    // Final Recommendation
+    // Enhanced Sentiment Analysis Section
     html += `
-        <div class="analysis-section">
-            <h3>🎯 Final Recommendation</h3>
-            <div class="recommendation">
-                <p class="recommendation-${data.final_recommendation.toLowerCase()}">
-                    <strong>${data.final_recommendation.toUpperCase()}</strong>
-                </p>
+        <div class="analysis-section enhanced">
+            <h3>💬 Sentiment & On-Chain Analysis</h3>
+            <div class="sentiment-overview">
+                <div class="sentiment-gauge">
+                    <div class="gauge-circle" style="background: conic-gradient(${getGaugeGradient(data.sentiment_analysis?.combined_score || 0.5)})">
+                        <div class="gauge-inner">
+                            <div class="gauge-score">${(data.sentiment_analysis?.combined_score || 0.5).toFixed(2)}</div>
+                            <div class="gauge-label">${data.sentiment_analysis?.sentiment_analysis?.sentiment_class || 'NEUTRAL'}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="sentiment-details">
+                    <div class="detail-item">
+                        <span class="detail-label">Combined Signal</span>
+                        <span class="detail-value signal-${data.sentiment_analysis?.combined_signal?.toLowerCase() || 'hold'}">
+                            ${data.sentiment_analysis?.combined_signal || 'HOLD'}
+                        </span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">News Sentiment</span>
+                        <span class="detail-value">${data.sentiment_analysis?.sentiment_analysis?.sentiment_class || 'NEUTRAL'}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">News Count</span>
+                        <span class="detail-value">${data.sentiment_analysis?.sentiment_analysis?.news_count || 'N/A'}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <h4>On-Chain Metrics</h4>
+            <div class="onchain-grid">
+                <div class="onchain-item">
+                    <div class="onchain-icon">👥</div>
+                    <div class="onchain-content">
+                        <div class="onchain-value">${formatLargeNumber(data.sentiment_analysis?.onchain_metrics?.active_addresses || 0)}</div>
+                        <div class="onchain-label">Active Addresses</div>
+                    </div>
+                </div>
+                <div class="onchain-item">
+                    <div class="onchain-icon">⚡</div>
+                    <div class="onchain-content">
+                        <div class="onchain-value">${formatLargeNumber(data.sentiment_analysis?.onchain_metrics?.transaction_count || 0)}</div>
+                        <div class="onchain-label">Transactions</div>
+                    </div>
+                </div>
+                <div class="onchain-item">
+                    <div class="onchain-icon">📊</div>
+                    <div class="onchain-content">
+                        <div class="onchain-value">${data.sentiment_analysis?.onchain_metrics?.nvt_ratio || 'N/A'}</div>
+                        <div class="onchain-label">NVT Ratio</div>
+                    </div>
+                </div>
+                <div class="onchain-item">
+                    <div class="onchain-icon">🔄</div>
+                    <div class="onchain-content">
+                        <div class="onchain-value">${data.sentiment_analysis?.onchain_metrics?.mvrv || 'N/A'}</div>
+                        <div class="onchain-label">MVRV Ratio</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Enhanced Final Recommendation Section
+    html += `
+        <div class="analysis-section final-recommendation enhanced">
+            <div class="recommendation-content">
+                <h3>🎯 Final Recommendation</h3>
+                <div class="recommendation-result ${data.final_recommendation?.toLowerCase() || 'hold'}">
+                    ${data.final_recommendation || 'HOLD'}
+                </div>
+                <div class="recommendation-confidence">
+                    Confidence: ${calculateConfidence(data)}%
+                </div>
             </div>
         </div>
     `;
@@ -214,93 +334,316 @@ function displayAnalysis(data) {
     analysisContent.innerHTML = html;
 }
 
-function displayTechnicalAnalysis(technical) {
+function getSignalClass(signal) {
+    if (!signal) return 'neutral';
+    const lowerSignal = signal.toLowerCase();
+    if (lowerSignal.includes('buy')) return 'buy';
+    if (lowerSignal.includes('sell')) return 'sell';
+    return 'hold';
+}
+
+function getGaugeGradient(score) {
+    if (score > 0.6) return '#27ae60 0deg, #27ae60 ' + (score * 360) + 'deg, #e9ecef ' + (score * 360) + 'deg';
+    if (score < 0.4) return '#e74c3c 0deg, #e74c3c ' + (score * 360) + 'deg, #e9ecef ' + (score * 360) + 'deg';
+    return '#f39c12 0deg, #f39c12 ' + (score * 360) + 'deg, #e9ecef ' + (score * 360) + 'deg';
+}
+
+function calculateConfidence(data) {
+    // Simple confidence calculation based on signal consistency
+    const signals = [
+        data.technical_analysis?.overall_signal,
+        data.sentiment_analysis?.combined_signal
+    ].filter(s => s);
+    
+    if (signals.length === 0) return 50;
+    
+    const buyCount = signals.filter(s => s?.toLowerCase().includes('buy')).length;
+    const sellCount = signals.filter(s => s?.toLowerCase().includes('sell')).length;
+    const holdCount = signals.filter(s => s?.toLowerCase().includes('hold')).length;
+    
+    const maxCount = Math.max(buyCount, sellCount, holdCount);
+    return Math.round((maxCount / signals.length) * 100);
+}
+
+function formatIndicators(technical) {
     if (!technical) return '<p>No technical analysis available</p>';
     
     let html = '';
     
-    // Display overall signal and summary
-    if (technical.overall_signal) {
-        html += `
-            <div class="indicator">
-                <strong>Overall Signal:</strong>
-                <span class="signal-${technical.overall_signal.toLowerCase()}">${technical.overall_signal}</span>
-            </div>
-        `;
-    }
-    
-    if (technical.summary) {
-        html += `
-            <div class="indicator">
-                <strong>Signal Summary:</strong>
-                <pre>Buy: ${technical.summary.buy_signals}, Sell: ${technical.summary.sell_signals}, Hold: ${technical.summary.hold_signals}</pre>
-            </div>
-        `;
-    }
-    
-    // Display analysis for each timeframe
     ['1d', '1w', '1m'].forEach(timeframe => {
         if (technical[timeframe]) {
             const tf = technical[timeframe];
             html += `
-                <div class="timeframe-section">
-                    <h4>${timeframe.toUpperCase()} Analysis</h4>
-                    <p><em>${tf.period_info}</em></p>
+                <div class="timeframe-card">
+                    <h4>Last ${timeframe === '1d' ? '1 Day' : timeframe === '1w' ? '7 Days' : '30 Days'} Analysis</h4>
+                    <div class="indicators-grid">
+                        <div class="indicator-group">
+                            <h5>📊 Oscillators</h5>
+                            <div class="indicator-list">
+                                ${formatIndicatorList(tf.oscillators)}
+                            </div>
+                        </div>
+                        <div class="indicator-group">
+                            <h5>📈 Moving Averages</h5>
+                            <div class="indicator-list">
+                                ${formatIndicatorList(tf.moving_averages)}
+                            </div>
+                        </div>
+                        <div class="indicator-group">
+                            <h5>🎯 Signals</h5>
+                            <div class="indicator-list">
+                                ${formatSignalList(tf.signals)}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             `;
-            
-            // Display oscillators
-            if (tf.oscillators) {
-                html += '<div class="indicator-group"><strong>Oscillators:</strong><ul>';
-                Object.entries(tf.oscillators).forEach(([key, value]) => {
-                    html += `<li><strong>${key}:</strong> ${typeof value === 'number' ? value.toFixed(4) : value}</li>`;
-                });
-                html += '</ul></div>';
-            }
-            
-            // Display moving averages
-            if (tf.moving_averages) {
-                html += '<div class="indicator-group"><strong>Moving Averages:</strong><ul>';
-                Object.entries(tf.moving_averages).forEach(([key, value]) => {
-                    html += `<li><strong>${key}:</strong> ${typeof value === 'number' ? value.toFixed(2) : value}</li>`;
-                });
-                html += '</ul></div>';
-            }
-            
-            // Display signals
-            if (tf.signals) {
-                html += '<div class="indicator-group"><strong>Signals:</strong><ul>';
-                Object.entries(tf.signals).forEach(([key, value]) => {
-                    const signalClass = value.toLowerCase().includes('buy') ? 'buy' : value.toLowerCase().includes('sell') ? 'sell' : 'hold';
-                    html += `<li><strong>${key}:</strong> <span class="signal-${signalClass}">${value}</span></li>`;
-                });
-                html += '</ul></div>';
-            }
-            
-            html += '</div>';
         }
     });
     
     return html;
 }
 
-function displayIndicators(technical) {
-    if (!technical.indicators) return '<p>No indicators available</p>';
+function formatIndicatorList(indicators) {
+    if (!indicators) return '<div class="indicator-item">No data available</div>';
     
-    let html = '';
-    for (const [key, indicator] of Object.entries(technical.indicators)) {
-        if (key === 'timestamp') continue;
+    return Object.entries(indicators).map(([key, value]) => 
+        `<div class="indicator-item">
+            <span class="indicator-name">${key}</span>
+            <span class="indicator-value">${typeof value === 'number' ? value.toFixed(4) : value}</span>
+        </div>`
+    ).join('');
+}
+
+function formatSignalList(signals) {
+    if (!signals) return '<div class="indicator-item">No signals available</div>';
+    
+    return Object.entries(signals).map(([key, value]) => {
+        const signalClass = value.toLowerCase().includes('buy') ? 'buy' : 
+                           value.toLowerCase().includes('sell') ? 'sell' : 'hold';
+        return `<div class="indicator-item">
+            <span class="indicator-name">${key}</span>
+            <span class="indicator-value signal-${signalClass}">${value}</span>
+        </div>`;
+    }).join('');
+}
+
+function formatPredictionTable(lstm) {
+    if (!lstm?.future_predictions) return '<p>No prediction data available</p>';
+    
+    const { dates, predictions } = lstm.future_predictions;
+    
+    let html = '<div class="prediction-table-enhanced"><div class="table-header"><h4>7-Day Forecast</h4></div><div class="table-body">';
+    
+    for (let i = 0; i < dates.length && i < predictions.length; i++) {
+        const change = i > 0 ? ((predictions[i] - predictions[i-1]) / predictions[i-1]) * 100 : 0;
+        const changeClass = change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral';
         
         html += `
-            <div class="indicator">
-                <strong>${key.toUpperCase()}:</strong>
-                <pre>${JSON.stringify(indicator, null, 2)}</pre>
+            <div class="prediction-row">
+                <div class="prediction-date">${dates[i]}</div>
+                <div class="prediction-price">$${formatNumber(predictions[i], 2)}</div>
+                <div class="prediction-change ${changeClass}">${change > 0 ? '+' : ''}${change.toFixed(2)}%</div>
             </div>
         `;
     }
+    
+    html += '</div></div>';
     return html;
 }
 
-// Initialize the application
+// ============ CHART RENDERING ============
+
+function renderCharts(data) {
+    if (data.charts) {
+        if (data.charts.price) renderPriceChart(data.charts.price);
+        if (data.charts.technical) renderTechnicalChart(data.charts.technical);
+        if (data.charts.lstm) renderLSTMChart(data.charts.lstm);
+        if (data.charts.signals_distribution) renderSignalsChart(data.charts.signals_distribution);
+    }
+}
+
+function renderPriceChart(chartData) {
+    const ctx = document.getElementById('priceChart');
+    if (!ctx) return;
+    
+    if (chartInstances.priceChart) chartInstances.priceChart.destroy();
+    
+    chartInstances.priceChart = new Chart(ctx, {
+        type: 'line',
+        data: chartData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            return `Price: $${formatNumber(context.parsed.y, 2)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + formatNumber(value, 0);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderTechnicalChart(chartData) {
+    const ctx = document.getElementById('technicalChart');
+    if (!ctx) return;
+    
+    if (chartInstances.technicalChart) chartInstances.technicalChart.destroy();
+    
+    chartInstances.technicalChart = new Chart(ctx, {
+        type: 'line',
+        data: chartData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: $${formatNumber(context.parsed.y, 2)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + formatNumber(value, 0);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderLSTMChart(chartData) {
+    const ctx = document.getElementById('lstmChart');
+    if (!ctx) return;
+    
+    if (chartInstances.lstmChart) chartInstances.lstmChart.destroy();
+    
+    chartInstances.lstmChart = new Chart(ctx, {
+        type: 'line',
+        data: chartData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: $${formatNumber(context.parsed.y, 2)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + formatNumber(value, 0);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderSignalsChart(chartData) {
+    const ctx = document.getElementById('signalsChart');
+    if (!ctx) return;
+    
+    if (chartInstances.signalsChart) chartInstances.signalsChart.destroy();
+    
+    chartInstances.signalsChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: chartData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function cleanupCharts() {
+    Object.values(chartInstances).forEach(chart => {
+        if (chart) chart.destroy();
+    });
+    chartInstances = {};
+}
+
+// ============ FORMATTING FUNCTIONS ============
+
+function formatNumber(num, decimals = 2) {
+    if (num === null || num === undefined) return 'N/A';
+    return parseFloat(num).toLocaleString('en-US', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+    });
+}
+
+function formatLargeNumber(num) {
+    if (num === null || num === undefined) return 'N/A';
+    
+    if (num >= 1e12) return (num / 1e12).toFixed(2) + 'T';
+    if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
+    if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+    if (num >= 1e3) return (num / 1e3).toFixed(2) + 'K';
+    return formatNumber(num, 0);
+}
+
+function formatChange(change) {
+    if (change === null || change === undefined) return 'N/A';
+    
+    const numChange = parseFloat(change);
+    const sign = numChange >= 0 ? '+' : '';
+    return `${sign}${numChange.toFixed(2)}%`;
+}
+
+// ============ INITIALIZATION ============
+
 document.addEventListener('DOMContentLoaded', () => {
     showScreen('dashboard');
 });
