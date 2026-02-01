@@ -11,6 +11,12 @@ from datetime import datetime, timedelta
 import json
 import os
 from abc import ABC, abstractmethod
+from typing import Dict, List, Any, Optional
+import time
+
+# Import our new pattern implementations
+from observer import PredictionEventManager, PredictionSubject
+from factory import ConfigurationManager, CacheManager, LoggerManager
 
 # TensorFlow/Keras imports (with fallback for demo mode)
 try:
@@ -26,6 +32,16 @@ except ImportError:
 
 app = Flask(__name__)
 CORS(app)
+
+# Initialize managers (Singleton Pattern)
+config_manager = ConfigurationManager()
+cache_manager = CacheManager()
+logger_manager = LoggerManager()
+logger = logger_manager.get_logger()
+
+# Initialize Observer Pattern
+event_manager = PredictionEventManager()
+prediction_subject = event_manager.get_prediction_subject()
 
 # ============ STRATEGY PATTERN FOR PREDICTION ============
 

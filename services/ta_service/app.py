@@ -7,8 +7,25 @@ import requests
 import numpy as np
 from abc import ABC, abstractmethod
 from datetime import datetime
+import json
+
+
+class NumpyJSONEncoder(json.JSONEncoder):
+    """Custom JSON encoder to handle numpy types"""
+    
+    def default(self, obj):
+        if isinstance(obj, np.bool_):
+            return bool(obj)
+        elif isinstance(obj, np.int64) or isinstance(obj, np.int32):
+            return int(obj)
+        elif isinstance(obj, np.float64) or isinstance(obj, np.float32):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
 
 app = Flask(__name__)
+app.json = NumpyJSONEncoder
 CORS(app)
 
 # ============ STRATEGY PATTERN FOR TA INDICATORS ============
@@ -45,9 +62,9 @@ class RSIStrategy(TAStrategy):
         return {
             "indicator": "RSI",
             "value": float(rsi),
-            "overbought": rsi > 70,
-            "oversold": rsi < 30,
-            "period": period
+            "overbought": bool(rsi > 70),
+            "oversold": bool(rsi < 30),
+            "period": int(period)
         }
     
     def get_indicator_name(self) -> str:
@@ -74,7 +91,7 @@ class MACDStrategy(TAStrategy):
             "macd_line": float(macd_line[-1]),
             "signal_line": float(signal_line[-1]),
             "histogram": float(histogram[-1]),
-            "bullish": histogram[-1] > 0
+            "bullish": bool(histogram[-1] > 0)
         }
     
     def _calculate_ema(self, prices: np.ndarray, period: int) -> np.ndarray:
@@ -109,8 +126,8 @@ class BollingerBandsStrategy(TAStrategy):
         
         return {
             "indicator": "Bollinger Bands",
-            "upper_band": float(upper_band),
             "middle_band": float(sma),
+            "upper_band": float(upper_band),
             "lower_band": float(lower_band),
             "bandwidth": float(upper_band - lower_band),
             "current_price": float(current_price),
@@ -159,13 +176,33 @@ class TACalculator:
     def calculate_all(self, prices: list) -> dict:
         """Calculate all technical indicators"""
         
-        return {
+        results = {
             "rsi": self.strategies["rsi"].calculate(prices),
             "macd": self.strategies["macd"].calculate(prices),
             "bb": self.strategies["bb"].calculate(prices),
             "ma": self.strategies["ma"].calculate(prices),
             "timestamp": datetime.now().isoformat()
         }
+        
+        # Ensure all boolean values are Python bool, not numpy bool_
+        return self._convert_numpy_types(results)
+    
+    def _convert_numpy_types(self, obj):
+        """Recursively convert numpy types to Python types"""
+        import numpy as np
+        
+        if isinstance(obj, dict):
+            return {key: self._convert_numpy_types(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_numpy_types(item) for item in obj]
+        elif isinstance(obj, np.bool_):
+            return bool(obj)
+        elif isinstance(obj, np.int64) or isinstance(obj, np.int32):
+            return int(obj)
+        elif isinstance(obj, np.float64) or isinstance(obj, np.float32):
+            return float(obj)
+        else:
+            return obj
     
     def calculate(self, indicator: str, prices: list) -> dict:
         """Calculate specific indicator"""
@@ -173,12 +210,13 @@ class TACalculator:
         if indicator not in self.strategies:
             return {"error": f"Unknown indicator: {indicator}"}
         
-        return self.strategies[indicator].calculate(prices)
+        result = self.strategies[indicator].calculate(prices)
+        return self._convert_numpy_types(result)
 
 
 # ============ INITIALIZATION ============
 
-calculator = TACalculator()
+# calculator = TACalculator()  # Commented out to debug initialization issues
 PRICE_SERVICE_URL = "http://price-service:5001"
 
 
@@ -199,6 +237,14 @@ def get_technical_analysis(symbol):
     """Get all technical analysis indicators for a symbol"""
     
     try:
+        return jsonify({
+            "symbol": symbol,
+            "test": "working",
+            "status": "ok"
+        })
+        
+        # Original code commented out for debugging
+        """
         # Fetch price data from price service
         response = requests.get(
             f"{PRICE_SERVICE_URL}/api/prices/{symbol}",
@@ -217,12 +263,14 @@ def get_technical_analysis(symbol):
         # Calculate all indicators
         ta_results = calculator.calculate_all(prices)
         
+        # Simple test response first
         return jsonify({
             "symbol": symbol,
-            "indicators": ta_results,
-            "analysis_timestamp": datetime.now().isoformat(),
-            "price_count": len(prices)
+            "test": True,
+            "price_count": len(prices),
+            "analysis_timestamp": datetime.now().isoformat()
         })
+        """
     
     except requests.RequestException as e:
         return jsonify({"error": f"Service communication error: {str(e)}"}), 502

@@ -8,9 +8,20 @@ import pandas as pd
 import json
 from datetime import datetime, timedelta
 import numpy as np
+import time
+from typing import Dict, List, Any, Optional
+
+# Import our new pattern implementations
+from factory import PriceDataSourceFactory, ConfigurationManager, CacheManager, LoggerManager
 
 app = Flask(__name__)
 CORS(app)
+
+# Initialize managers (Singleton Pattern)
+config_manager = ConfigurationManager()
+cache_manager = CacheManager()
+logger_manager = LoggerManager()
+logger = logger_manager.get_logger()
 
 # ============ STRATEGY PATTERN IMPLEMENTATION ============
 
@@ -33,13 +44,25 @@ class PriceDataStrategy(ABC):
 class FileDataStrategy(PriceDataStrategy):
     """Strategy for fetching from JSONL files (local historical data)"""
     
-    def __init__(self, file_paths: dict):
+    def __init__(self, file_paths: Dict[str, str]):
         self.file_paths = file_paths  # {"ETHUSDT": "data/ETHUSDT.jsonl", ...}
+        self.logger = logger_manager.get_logger()
     
-    def fetch_ohlcv(self, symbol: str, timeframe: str, limit: int = 100) -> list:
+    def fetch_ohlcv(self, symbol: str, timeframe: str, limit: int = 100) -> List[Dict[str, Any]]:
+        """Fetch OHLCV data from local files with caching"""
+        start_time = time.time()
+        
         try:
+            # Check cache first
+            cache_key = f"ohlcv_{symbol}_{timeframe}_{limit}"
+            cached_data = cache_manager.get(cache_key)
+            if cached_data:
+                logger.info(f"Cache hit for {symbol}")
+                return cached_data
+            
             file_path = self.file_paths.get(symbol)
             if not file_path:
+                logger.warning(f"No file path found for symbol: {symbol}")
                 return []
             
             data = []
@@ -48,8 +71,18 @@ class FileDataStrategy(PriceDataStrategy):
                     data.append(json.loads(line))
             
             # Return most recent candles
-            return data[-limit:] if data else []
-        except:
+            data = data[-limit:] if len(data) > limit else data
+            
+            # Cache the result
+            cache_manager.set(cache_key, data, ttl_seconds=300)  # 5 minutes cache
+            
+            response_time = time.time() - start_time
+            logger_manager.log_request(f"fetch_ohlcv_file", {"symbol": symbol, "limit": limit}, response_time)
+            
+            return data
+            
+        except Exception as e:
+            logger_manager.log_error(e, f"FileDataStrategy.fetch_ohlcv for {symbol}")
             return []
     
     def is_available(self) -> bool:
@@ -169,15 +202,23 @@ DATA_FILES = {
     "LINKUSDC": "data/LINKUSDC.jsonl"
 }
 
-manager = PriceDataManager()
-file_strategy = FileDataStrategy(DATA_FILES)
-api_strategy = APIDataStrategy()
-cache_strategy = CacheStrategy()
+# ============ SERVICE INITIALIZATION WITH FACTORY PATTERN ============
 
-manager.add_strategy(cache_strategy)
+# Register strategies with factory
+PriceDataSourceFactory.register_source('file', FileDataStrategy)
+PriceDataSourceFactory.register_source('api', APIDataStrategy)
+
+# Initialize strategies using configuration
+file_strategy = PriceDataSourceFactory.create_source('file', DATA_FILES)
+api_strategy = PriceDataSourceFactory.create_source('api', {})
+
+# Create manager with strategies
+manager = PriceDataManager()
 manager.add_strategy(file_strategy)
 manager.add_strategy(api_strategy)
-manager.set_primary_strategy(cache_strategy)
+manager.set_primary_strategy(file_strategy)  # Use file as primary for demo
+
+logger.info("Price Data Service initialized with strategies")
 
 
 # ============ API ENDPOINTS ============

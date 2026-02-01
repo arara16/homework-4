@@ -76,11 +76,3 @@ services:
       - ta-service
     environment:
       - REACT_APP_API_URL=http://localhost:8080/api
-
-  frontend:
-    build: ./frontend
-    container_name: homework-4-frontend
-    ports:
-      - "3000:80"
-    depends_on:
-      - api-gateway
