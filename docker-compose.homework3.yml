@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # Homework 3 Style Monolithic Application
+  homework-3-app:
+    build:
+      context: .
+      dockerfile: Dockerfile.homework3
+    container_name: homework-3-app
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
+    depends_on:
+      - price-service
+      - ta-service
+      - prediction-service
+    restart: unless-stopped
+
+  # Keep microservices running in background for the monolithic app to use
+  price-service:
+    image: cryptovault-hw4/price-service:latest
+    container_name: homework-4-price-service
+    restart: unless-stopped
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
+    networks:
+      - app-network
+
+  ta-service:
+    image: cryptovault-hw4/ta-service:latest
+    container_name: homework-4-ta-service
+    restart: unless-stopped
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
+    networks:
+      - app-network
+
+  prediction-service:
+    image: cryptovault-hw4/prediction-service:latest
+    container_name: homework-4-prediction-service
+    restart: unless-stopped
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
