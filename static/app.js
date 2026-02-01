@@ -159,7 +159,7 @@ function displayAnalysis(data) {
             <div class="analysis-section">
                 <h3>📊 Technical Analysis</h3>
                 <div class="indicators">
-                    ${displayIndicators(data.technical_analysis)}
+                    ${displayTechnicalAnalysis(data.technical_analysis)}
                 </div>
             </div>
         `;
@@ -212,6 +212,75 @@ function displayAnalysis(data) {
     
     html += '</div>';
     analysisContent.innerHTML = html;
+}
+
+function displayTechnicalAnalysis(technical) {
+    if (!technical) return '<p>No technical analysis available</p>';
+    
+    let html = '';
+    
+    // Display overall signal and summary
+    if (technical.overall_signal) {
+        html += `
+            <div class="indicator">
+                <strong>Overall Signal:</strong>
+                <span class="signal-${technical.overall_signal.toLowerCase()}">${technical.overall_signal}</span>
+            </div>
+        `;
+    }
+    
+    if (technical.summary) {
+        html += `
+            <div class="indicator">
+                <strong>Signal Summary:</strong>
+                <pre>Buy: ${technical.summary.buy_signals}, Sell: ${technical.summary.sell_signals}, Hold: ${technical.summary.hold_signals}</pre>
+            </div>
+        `;
+    }
+    
+    // Display analysis for each timeframe
+    ['1d', '1w', '1m'].forEach(timeframe => {
+        if (technical[timeframe]) {
+            const tf = technical[timeframe];
+            html += `
+                <div class="timeframe-section">
+                    <h4>${timeframe.toUpperCase()} Analysis</h4>
+                    <p><em>${tf.period_info}</em></p>
+            `;
+            
+            // Display oscillators
+            if (tf.oscillators) {
+                html += '<div class="indicator-group"><strong>Oscillators:</strong><ul>';
+                Object.entries(tf.oscillators).forEach(([key, value]) => {
+                    html += `<li><strong>${key}:</strong> ${typeof value === 'number' ? value.toFixed(4) : value}</li>`;
+                });
+                html += '</ul></div>';
+            }
+            
+            // Display moving averages
+            if (tf.moving_averages) {
+                html += '<div class="indicator-group"><strong>Moving Averages:</strong><ul>';
+                Object.entries(tf.moving_averages).forEach(([key, value]) => {
+                    html += `<li><strong>${key}:</strong> ${typeof value === 'number' ? value.toFixed(2) : value}</li>`;
+                });
+                html += '</ul></div>';
+            }
+            
+            // Display signals
+            if (tf.signals) {
+                html += '<div class="indicator-group"><strong>Signals:</strong><ul>';
+                Object.entries(tf.signals).forEach(([key, value]) => {
+                    const signalClass = value.toLowerCase().includes('buy') ? 'buy' : value.toLowerCase().includes('sell') ? 'sell' : 'hold';
+                    html += `<li><strong>${key}:</strong> <span class="signal-${signalClass}">${value}</span></li>`;
+                });
+                html += '</ul></div>';
+            }
+            
+            html += '</div>';
+        }
+    });
+    
+    return html;
 }
 
 function displayIndicators(technical) {

@@ -272,28 +272,78 @@ footer p {
     margin: 5px 0;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-    .container {
-        margin: 10px;
-        border-radius: 10px;
-    }
-    
-    .nav-btn {
-        display: block;
-        margin: 5px 0;
-        width: 100%;
-    }
-    
-    .analysis-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    table {
-        font-size: 0.9em;
-    }
-    
-    th, td {
-        padding: 10px;
-    }
+.timeframe-section {
+    background: white;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+    border-left: 4px solid #667eea;
+}
+
+.timeframe-section h4 {
+    color: #667eea;
+    margin-bottom: 10px;
+}
+
+.timeframe-section p {
+    font-size: 0.9em;
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.indicator-group {
+    margin-bottom: 15px;
+}
+
+.indicator-group strong {
+    color: #333;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.indicator-group ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.indicator-group li {
+    padding: 5px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.9em;
+}
+
+.signal-buy {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.signal-sell {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.signal-hold {
+    color: #ffc107;
+    font-weight: bold;
+}
+
+.signal-strong_buy {
+    color: #155724;
+    font-weight: bold;
+}
+
+.signal-strong_sell {
+    color: #721c24;
+    font-weight: bold;
+}
+
+.signal-weak_trend {
+    color: #6c757d;
+    font-weight: bold;
+}
+
+.signal-strong_trend {
+    color: #004085;
+    font-weight: bold;
 }
