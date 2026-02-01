@@ -1,0 +1,16 @@
+services:
+  # Homework 3 Style Monolithic Application (but with Homework 4 design patterns inside)
+  homework-3-exact:
+    build:
+      context: .
+      dockerfile: Dockerfile.homework3-exact
+    container_name: homework-3-exact
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./data:/app/data
+      - ./static:/app/static
+    environment:
+      - FLASK_APP=homework3_exact_app
+      - FLASK_ENV=production
+    restart: unless-stopped
