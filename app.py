@@ -24,7 +24,7 @@ def get_live_ticker_data():
         return {}
 
 def load_symbols():
-    """Load symbols from data directory with live ticker data"""
+    """Load symbols from data directory with live ticker data from Binance"""
     data_dir = Path('data/cryptocurrencies')
     symbols = []
     live_data = get_live_ticker_data()
@@ -35,11 +35,22 @@ def load_symbols():
             lines = f.readlines()
             if lines:
                 last_record = json.loads(lines[-1])
+                
+                # Always update with live Binance data for real-time info
                 if symbol in live_data:
                     ticker = live_data[symbol]
                     last_record['price_change_percent'] = ticker.get('priceChangePercent', '0')
                     last_record['quote_volume'] = ticker.get('quoteVolume', last_record.get('quote_volume', '0'))
                     last_record['count'] = ticker.get('count', last_record.get('count', '0'))
+                    
+                    # Update current price with live data
+                    last_record['close'] = float(ticker.get('lastPrice', last_record.get('close', 0)))
+                    
+                    # Update other live fields
+                    last_record['open'] = float(ticker.get('openPrice', last_record.get('open', last_record.get('close', 0))))
+                    last_record['high'] = float(ticker.get('highPrice', last_record.get('high', last_record.get('close', 0))))
+                    last_record['low'] = float(ticker.get('lowPrice', last_record.get('low', last_record.get('close', 0))))
+                
                 symbols.append(last_record)
     return symbols
 
