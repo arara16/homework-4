@@ -52,7 +52,10 @@ class Subject(ABC):
             try:
                 observer.update(self, event_type, data)
             except Exception as e:
-                print(f"Error notifying observer: {e}")
+                # Use proper logging instead of print
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error notifying observer {observer.__class__.__name__}: {e}", exc_info=True)
 
 
 class PredictionSubject(Subject):
@@ -145,7 +148,10 @@ class PredictionLoggerObserver(Observer):
             with open(self.log_file, 'a') as f:
                 f.write(log_entry)
         except Exception as e:
-            print(f"Error writing to log file: {e}")
+            # Use proper logging instead of print
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error writing to log file {self.log_file}: {e}", exc_info=True)
 
 
 class CacheInvalidationObserver(Observer):
@@ -172,7 +178,10 @@ class CacheInvalidationObserver(Observer):
                 for key in cache_keys:
                     self.cache_manager.remove(key)
                 
-                print(f"Invalidated cache for symbol: {symbol}")
+                # Use proper logging instead of print
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"Invalidated cache for symbol: {symbol}")
 
 
 class NotificationObserver(Observer):
@@ -197,7 +206,11 @@ class NotificationObserver(Observer):
     def _send_notification(self, symbol: str, prediction: Dict[str, Any]):
         """Send notification (placeholder implementation)"""
         message = f"High confidence prediction for {symbol}: {prediction.get('forecast', 'N/A')}"
-        print(f"NOTIFICATION: {message}")
+        
+        # Use proper logging instead of print
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"NOTIFICATION: {message}")
         
         # In a real implementation, this could send:
         # - Email notifications

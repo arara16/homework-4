@@ -2,6 +2,7 @@ package com.cryptovault.gateway.factory;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import javax.annotation.PostConstruct;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -25,12 +26,12 @@ public class ServiceFactory {
     
     public ServiceFactory() {
         this.serviceConfigs = new HashMap<>();
-        initializeServiceConfigs();
     }
     
     /**
-     * Initialize default service configurations
+     * Initialize default service configurations after dependency injection
      */
+    @PostConstruct
     private void initializeServiceConfigs() {
         serviceConfigs.put("price-service", new ServiceConfig(priceServiceUrl, 5000, 3));
         serviceConfigs.put("ta-service", new ServiceConfig(taServiceUrl, 5000, 3));

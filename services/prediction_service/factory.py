@@ -81,32 +81,67 @@ class ConfigurationManager:
     
     def _load_configuration(self):
         """Load configuration from environment variables and config files"""
-        # Load from environment variables
-        self._config = {
-            'default_model': os.getenv('DEFAULT_MODEL', 'lstm'),
-            'lookback_period': int(os.getenv('LOOKBACK_PERIOD', '30')),
-            'forecast_days': int(os.getenv('FORECAST_DAYS', '7')),
-            'confidence_threshold': float(os.getenv('CONFIDENCE_THRESHOLD', '0.7')),
-            'cache_enabled': os.getenv('CACHE_ENABLED', 'true').lower() == 'true',
-            'cache_ttl': int(os.getenv('CACHE_TTL', '3600')),  # 1 hour
-            'batch_size': int(os.getenv('BATCH_SIZE', '32')),
-            'epochs': int(os.getenv('EPOCHS', '100')),
-            'validation_split': float(os.getenv('VALIDATION_SPLIT', '0.2')),
-        }
+        # Load from environment variables with error handling
+        try:
+            self._config = {
+                'default_model': os.getenv('DEFAULT_MODEL', 'lstm'),
+                'lookback_period': self._safe_int_conversion(os.getenv('LOOKBACK_PERIOD', '30'), 'LOOKBACK_PERIOD', 30),
+                'forecast_days': self._safe_int_conversion(os.getenv('FORECAST_DAYS', '7'), 'FORECAST_DAYS', 7),
+                'confidence_threshold': self._safe_float_conversion(os.getenv('CONFIDENCE_THRESHOLD', '0.7'), 'CONFIDENCE_THRESHOLD', 0.7),
+                'cache_enabled': os.getenv('CACHE_ENABLED', 'true').lower() == 'true',
+                'cache_ttl': self._safe_int_conversion(os.getenv('CACHE_TTL', '3600'), 'CACHE_TTL', 3600),
+                'batch_size': self._safe_int_conversion(os.getenv('BATCH_SIZE', '32'), 'BATCH_SIZE', 32),
+                'epochs': self._safe_int_conversion(os.getenv('EPOCHS', '100'), 'EPOCHS', 100),
+                'validation_split': self._safe_float_conversion(os.getenv('VALIDATION_SPLIT', '0.2'), 'VALIDATION_SPLIT', 0.2),
+            }
+        except Exception as e:
+            print(f"Error loading configuration from environment variables: {e}")
+            # Fallback to default configuration
+            self._config = {
+                'default_model': 'lstm',
+                'lookback_period': 30,
+                'forecast_days': 7,
+                'confidence_threshold': 0.7,
+                'cache_enabled': True,
+                'cache_ttl': 3600,
+                'batch_size': 32,
+                'epochs': 100,
+                'validation_split': 0.2,
+            }
         
         # Load model configurations
         model_configs = os.getenv('MODEL_CONFIGS', '{}')
         try:
             self._config['model_configs'] = json.loads(model_configs)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            print(f"Error parsing MODEL_CONFIGS JSON: {e}")
             self._config['model_configs'] = {}
         
         # Load from config file if exists
         config_file = os.getenv('CONFIG_FILE', 'prediction_config.json')
         if os.path.exists(config_file):
-            with open(config_file, 'r') as f:
-                file_config = json.load(f)
-                self._config.update(file_config)
+            try:
+                with open(config_file, 'r') as f:
+                    file_config = json.load(f)
+                    self._config.update(file_config)
+            except (json.JSONDecodeError, IOError) as e:
+                print(f"Error loading config file {config_file}: {e}")
+    
+    def _safe_int_conversion(self, value: str, env_var: str, default: int) -> int:
+        """Safely convert environment variable to int"""
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            print(f"Invalid value for {env_var}: '{value}'. Using default: {default}")
+            return default
+    
+    def _safe_float_conversion(self, value: str, env_var: str, default: float) -> float:
+        """Safely convert environment variable to float"""
+        try:
+            return float(value)
+        except (ValueError, TypeError):
+            print(f"Invalid value for {env_var}: '{value}'. Using default: {default}")
+            return default
     
     def get(self, key: str, default=None):
         """Get configuration value"""
@@ -161,6 +196,7 @@ class CacheManager:
                         if key in self._access_times:
                             del self._access_times[key]
                 else:
+                    # No TTL set, check if default TTL should apply
                     self._access_times[key] = time.time()
                     return self._cache[key]
         return None
@@ -174,6 +210,13 @@ class CacheManager:
             self._access_times[key] = time.time()
             if ttl_seconds:
                 self._ttl[key] = time.time() + ttl_seconds
+            else:
+                # Apply default TTL of 1 hour if not specified
+                self._ttl[key] = time.time() + 3600
+        
+        # Periodically cleanup expired entries
+        if len(self._cache) % 100 == 0:  # Cleanup every 100 operations
+            self.cleanup_expired()
     
     def clear(self):
         """Clear all cache"""
@@ -250,9 +293,21 @@ class LoggerManager:
         import logging
         import sys
         
-        config_manager = ConfigurationManager()
-        log_level = config_manager.get('log_level', 'INFO')
-        log_file = config_manager.get('log_file', 'prediction_service.log')
+        # Use default configuration first to avoid circular dependency
+        log_level = 'INFO'
+        log_file = 'prediction_service.log'
+        
+        # Try to get configuration from environment directly to avoid circular dependency
+        log_level_env = os.getenv('LOG_LEVEL', 'INFO')
+        log_file_env = os.getenv('LOG_FILE', 'prediction_service.log')
+        
+        # Validate log level
+        valid_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+        if log_level_env.upper() in valid_levels:
+            log_level = log_level_env.upper()
+        
+        if log_file_env:
+            log_file = log_file_env
         
         # Create formatter
         formatter = logging.Formatter(

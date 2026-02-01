@@ -53,8 +53,10 @@ class FileDataStrategy(PriceDataStrategy):
         start_time = time.time()
         
         try:
-            # Check cache first
-            cache_key = f"ohlcv_{symbol}_{timeframe}_{limit}"
+            # Check cache first with robust key generation
+            import hashlib
+            cache_key_data = f"ohlcv_{symbol}_{timeframe}_{limit}".encode('utf-8')
+            cache_key = hashlib.md5(cache_key_data).hexdigest()
             cached_data = cache_manager.get(cache_key)
             if cached_data:
                 logger.info(f"Cache hit for {symbol}")
@@ -66,9 +68,17 @@ class FileDataStrategy(PriceDataStrategy):
                 return []
             
             data = []
-            with open(file_path, 'r') as f:
-                for line in f:
-                    data.append(json.loads(line))
+            try:
+                with open(file_path, 'r') as f:
+                    for line in f:
+                        try:
+                            data.append(json.loads(line))
+                        except json.JSONDecodeError as e:
+                            logger.warning(f"Invalid JSON line in {file_path}: {e}")
+                            continue
+            except IOError as e:
+                logger.error(f"Error reading file {file_path}: {e}")
+                return []
             
             # Return most recent candles
             data = data[-limit:] if len(data) > limit else data

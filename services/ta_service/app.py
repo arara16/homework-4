@@ -216,7 +216,7 @@ class TACalculator:
 
 # ============ INITIALIZATION ============
 
-# calculator = TACalculator()  # Commented out to debug initialization issues
+calculator = TACalculator()
 PRICE_SERVICE_URL = "http://price-service:5001"
 
 
@@ -237,14 +237,6 @@ def get_technical_analysis(symbol):
     """Get all technical analysis indicators for a symbol"""
     
     try:
-        return jsonify({
-            "symbol": symbol,
-            "test": "working",
-            "status": "ok"
-        })
-        
-        # Original code commented out for debugging
-        """
         # Fetch price data from price service
         response = requests.get(
             f"{PRICE_SERVICE_URL}/api/prices/{symbol}",
@@ -263,14 +255,12 @@ def get_technical_analysis(symbol):
         # Calculate all indicators
         ta_results = calculator.calculate_all(prices)
         
-        # Simple test response first
         return jsonify({
             "symbol": symbol,
-            "test": True,
-            "price_count": len(prices),
-            "analysis_timestamp": datetime.now().isoformat()
+            "indicators": ta_results,
+            "analysis_timestamp": datetime.now().isoformat(),
+            "price_count": len(prices)
         })
-        """
     
     except requests.RequestException as e:
         return jsonify({"error": f"Service communication error: {str(e)}"}), 502
@@ -338,8 +328,12 @@ def get_batch_analysis():
                         for ind in indicators
                     }
                 }
-        except:
-            results[symbol] = {"error": "Failed to analyze"}
+            else:
+                results[symbol] = {"error": f"Failed to fetch price data (HTTP {response.status_code})"}
+        except requests.RequestException as e:
+            results[symbol] = {"error": f"Service communication error: {str(e)}"}
+        except Exception as e:
+            results[symbol] = {"error": f"Analysis failed: {str(e)}"}
     
     return jsonify(results)
 
