@@ -7,7 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["python", "app_minimal.py"]
+CMD ["python", "app.py"]
 
 EXPOSE 5002
 

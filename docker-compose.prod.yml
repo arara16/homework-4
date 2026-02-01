@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  price-service:
+    image: yourusername/homework-4-price-service:latest
+    container_name: homework-4-price-service
+    restart: unless-stopped
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
+    networks:
+      - app-network
+
+  ta-service:
+    image: yourusername/homework-4-ta-service:latest
+    container_name: homework-4-ta-service
+    restart: unless-stopped
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
+    networks:
+      - app-network
+
+  prediction-service:
+    image: yourusername/homework-4-prediction-service:latest
+    container_name: homework-4-prediction-service
+    restart: unless-stopped
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
+    networks:
+      - app-network
+
+  api-gateway:
+    image: yourusername/homework-4-api-gateway:latest
+    container_name: homework-4-api-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      - price-service
+      - ta-service
+      - prediction-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=production
+      - PRICE_SERVICE_URL=http://price-service:5001
+      - TA_SERVICE_URL=http://ta-service:5002
+      - PREDICTION_SERVICE_URL=http://prediction-service:5003
+    networks:
+      - app-network
+
+  frontend:
+    image: yourusername/homework-4-frontend:latest
+    container_name: homework-4-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
