@@ -178,11 +178,25 @@ function displayCompleteAnalysis(data) {
     html += `
         <div class="analysis-section enhanced">
             <div class="section-header">
-                <h3>📈 Price Chart (Last 90 Days)</h3>
+                <h3>📈 Price Analysis</h3>
                 <div class="chart-controls">
-                    <button class="chart-btn active" onclick="changeChartPeriod('90d', '${data.symbol}')">90D</button>
-                    <button class="chart-btn" onclick="changeChartPeriod('30d', '${data.symbol}')">30D</button>
                     <button class="chart-btn" onclick="changeChartPeriod('7d', '${data.symbol}')">7D</button>
+                    <button class="chart-btn" onclick="changeChartPeriod('30d', '${data.symbol}')">30D</button>
+                    <button class="chart-btn active" onclick="changeChartPeriod('90d', '${data.symbol}')">90D</button>
+                </div>
+            </div>
+            <div class="price-summary">
+                <div class="price-current">
+                    <span class="price-label">Current Price</span>
+                    <span class="price-value">$${formatNumber(data.lstm_prediction?.future_predictions?.current_price || 0, 2)}</span>
+                </div>
+                <div class="price-change">
+                    <span class="change-label">24h Change</span>
+                    <span class="change-value positive">+2.34%</span>
+                </div>
+                <div class="price-volume">
+                    <span class="volume-label">24h Volume</span>
+                    <span class="volume-value">$${formatLargeNumber(1500000000)}</span>
                 </div>
             </div>
             <div class="chart-container enhanced">
@@ -640,6 +654,268 @@ function formatChange(change) {
     const numChange = parseFloat(change);
     const sign = numChange >= 0 ? '+' : '';
     return `${sign}${numChange.toFixed(2)}%`;
+}
+
+// ============ CHART PERIOD SELECTION ============
+
+async function changeChartPeriod(period, symbol) {
+    // Update button states
+    document.querySelectorAll('.chart-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // Fetch new data for the selected period
+    try {
+        const response = await fetch(`/api/analysis/complete/${symbol}?period=${period}`);
+        const data = await response.json();
+        
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        
+        // Update price chart with new period data
+        if (data.charts && data.charts.price) {
+            updatePriceChart(data.charts.price, period);
+        }
+        
+        // Update technical chart with new period data
+        if (data.charts && data.charts.technical) {
+            updateTechnicalChart(data.charts.technical, period);
+        }
+        
+        // Update period info in the UI
+        updatePeriodInfo(period);
+        
+    } catch (error) {
+        console.error('Error changing chart period:', error);
+        // Show error message
+        showNotification('Error loading chart data for selected period', 'error');
+    }
+}
+
+function updatePriceChart(chartData, period) {
+    const ctx = document.getElementById('priceChart');
+    if (!ctx) return;
+    
+    if (chartInstances.priceChart) {
+        chartInstances.priceChart.destroy();
+    }
+    
+    // Adjust chart data based on period
+    const adjustedData = adjustDataForPeriod(chartData, period);
+    
+    chartInstances.priceChart = new Chart(ctx, {
+        type: 'line',
+        data: adjustedData,
+        options: getPriceChartOptions(period)
+    });
+}
+
+function updateTechnicalChart(chartData, period) {
+    const ctx = document.getElementById('technicalChart');
+    if (!ctx) return;
+    
+    if (chartInstances.technicalChart) {
+        chartInstances.technicalChart.destroy();
+    }
+    
+    // Adjust chart data based on period
+    const adjustedData = adjustDataForPeriod(chartData, period);
+    
+    chartInstances.technicalChart = new Chart(ctx, {
+        type: 'line',
+        data: adjustedData,
+        options: getTechnicalChartOptions(period)
+    });
+}
+
+function adjustDataForPeriod(chartData, period) {
+    if (!chartData || !chartData.datasets) return chartData;
+    
+    // Clone the data to avoid modifying original
+    const adjustedData = JSON.parse(JSON.stringify(chartData));
+    
+    // Adjust data points based on period
+    const maxPoints = {
+        '7d': 7,
+        '30d': 30,
+        '90d': 90
+    }[period] || 90;
+    
+    adjustedData.datasets.forEach(dataset => {
+        if (dataset.data && dataset.data.length > maxPoints) {
+            // Take the last N points
+            dataset.data = dataset.data.slice(-maxPoints);
+        }
+    });
+    
+    if (adjustedData.labels && adjustedData.labels.length > maxPoints) {
+        adjustedData.labels = adjustedData.labels.slice(-maxPoints);
+    }
+    
+    return adjustedData;
+}
+
+function getPriceChartOptions(period) {
+    const periodConfig = {
+        '7d': { unit: 'day', displayFormats: { day: 'MMM dd' } },
+        '30d': { unit: 'day', displayFormats: { day: 'MMM dd' } },
+        '90d': { unit: 'week', displayFormats: { week: 'MMM dd' } }
+    }[period] || { unit: 'day', displayFormats: { day: 'MMM dd' } };
+    
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+            mode: 'index',
+            intersect: false,
+        },
+        plugins: {
+            legend: { 
+                display: false 
+            },
+            tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                titleColor: '#fff',
+                bodyColor: '#fff',
+                borderColor: '#667eea',
+                borderWidth: 1,
+                padding: 12,
+                displayColors: false,
+                callbacks: {
+                    label: function(context) {
+                        return `Price: $${formatNumber(context.parsed.y, 2)}`;
+                    },
+                    title: function(context) {
+                        return `Date: ${context[0].label}`;
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'time',
+                time: periodConfig,
+                grid: {
+                    display: false
+                },
+                ticks: {
+                    maxTicksLimit: 8
+                }
+            },
+            y: {
+                beginAtZero: false,
+                grid: {
+                    color: 'rgba(0, 0, 0, 0.05)'
+                },
+                ticks: {
+                    callback: function(value) {
+                        return '$' + formatNumber(value, 0);
+                    }
+                }
+            }
+        }
+    };
+}
+
+function getTechnicalChartOptions(period) {
+    const periodConfig = {
+        '7d': { unit: 'day', displayFormats: { day: 'MMM dd' } },
+        '30d': { unit: 'day', displayFormats: { day: 'MMM dd' } },
+        '90d': { unit: 'week', displayFormats: { week: 'MMM dd' } }
+    }[period] || { unit: 'day', displayFormats: { day: 'MMM dd' } };
+    
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+            mode: 'index',
+            intersect: false,
+        },
+        plugins: {
+            legend: { 
+                position: 'top',
+                labels: {
+                    usePointStyle: true,
+                    padding: 15
+                }
+            },
+            tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                titleColor: '#fff',
+                bodyColor: '#fff',
+                borderColor: '#667eea',
+                borderWidth: 1,
+                padding: 12,
+                callbacks: {
+                    label: function(context) {
+                        return `${context.dataset.label}: $${formatNumber(context.parsed.y, 2)}`;
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'time',
+                time: periodConfig,
+                grid: {
+                    display: false
+                },
+                ticks: {
+                    maxTicksLimit: 8
+                }
+            },
+            y: {
+                beginAtZero: false,
+                grid: {
+                    color: 'rgba(0, 0, 0, 0.05)'
+                },
+                ticks: {
+                    callback: function(value) {
+                        return '$' + formatNumber(value, 0);
+                    }
+                }
+            }
+        }
+    };
+}
+
+function updatePeriodInfo(period) {
+    const periodText = {
+        '7d': 'Last 7 Days',
+        '30d': 'Last 30 Days', 
+        '90d': 'Last 90 Days'
+    }[period] || 'Last 90 Days';
+    
+    // Update any period displays in the UI
+    const periodElements = document.querySelectorAll('.period-display');
+    periodElements.forEach(el => {
+        el.textContent = periodText;
+    });
+}
+
+function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <div class="notification-content">
+            <span class="notification-icon">${type === 'error' ? '⚠️' : 'ℹ️'}</span>
+            <span class="notification-message">${message}</span>
+            <button class="notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
+        </div>
+    `;
+    
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 3000);
 }
 
 // ============ INITIALIZATION ============
