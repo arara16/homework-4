@@ -1,0 +1,24 @@
+{
+  "AWSEBDockerrunVersion": "1",
+  "Image": {
+    "Name": "cryptovault-aws:latest",
+    "Update": "true"
+  },
+  "Ports": [
+    {
+      "ContainerPort": "5000",
+      "HostPort": "5000"
+    }
+  ],
+  "Environment": [
+    {
+      "Name": "PORT",
+      "Value": "5000"
+    },
+    {
+      "Name": "FLASK_ENV",
+      "Value": "production"
+    }
+  ],
+  "Logging": "/var/log/nginx"
+}

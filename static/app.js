@@ -280,8 +280,8 @@ function displayCompleteAnalysis(data) {
                 <div class="sentiment-details">
                     <div class="detail-item">
                         <span class="detail-label">Combined Signal</span>
-                        <span class="detail-value signal-${data.sentiment_analysis?.combined_signal?.toLowerCase() || 'hold'}">
-                            ${data.sentiment_analysis?.combined_signal || 'HOLD'}
+                        <span class="detail-value signal-${(data.sentiment_analysis?.sentiment || 'HOLD').toLowerCase()}">
+                            ${data.sentiment_analysis?.sentiment || 'HOLD'}
                         </span>
                     </div>
                     <div class="detail-item">
@@ -334,8 +334,8 @@ function displayCompleteAnalysis(data) {
         <div class="analysis-section final-recommendation enhanced">
             <div class="recommendation-content">
                 <h3>🎯 Final Recommendation</h3>
-                <div class="recommendation-result ${data.final_recommendation?.toLowerCase() || 'hold'}">
-                    ${data.final_recommendation || 'HOLD'}
+                <div class="recommendation-result ${(data.final_recommendation?.signal || 'HOLD').toLowerCase()}">
+                    ${data.final_recommendation?.signal || 'HOLD'}
                 </div>
                 <div class="recommendation-confidence">
                     Confidence: ${calculateConfidence(data)}%
@@ -350,7 +350,7 @@ function displayCompleteAnalysis(data) {
 
 function getSignalClass(signal) {
     if (!signal) return 'neutral';
-    const lowerSignal = signal.toLowerCase();
+    const lowerSignal = (signal || '').toString().toLowerCase();
     if (lowerSignal.includes('buy')) return 'buy';
     if (lowerSignal.includes('sell')) return 'sell';
     return 'hold';
@@ -371,9 +371,9 @@ function calculateConfidence(data) {
     
     if (signals.length === 0) return 50;
     
-    const buyCount = signals.filter(s => s?.toLowerCase().includes('buy')).length;
-    const sellCount = signals.filter(s => s?.toLowerCase().includes('sell')).length;
-    const holdCount = signals.filter(s => s?.toLowerCase().includes('hold')).length;
+    const buyCount = signals.filter(s => s && s.toString().toLowerCase().includes('buy')).length;
+    const sellCount = signals.filter(s => s && s.toString().toLowerCase().includes('sell')).length;
+    const holdCount = signals.filter(s => s && s.toString().toLowerCase().includes('hold')).length;
     
     const maxCount = Math.max(buyCount, sellCount, holdCount);
     return Math.round((maxCount / signals.length) * 100);
@@ -433,11 +433,11 @@ function formatSignalList(signals) {
     if (!signals) return '<div class="indicator-item">No signals available</div>';
     
     return Object.entries(signals).map(([key, value]) => {
-        const signalClass = value.toLowerCase().includes('buy') ? 'buy' : 
-                           value.toLowerCase().includes('sell') ? 'sell' : 'hold';
+        const signalClass = value && value.toString().toLowerCase().includes('buy') ? 'buy' : 
+                           value && value.toString().toLowerCase().includes('sell') ? 'sell' : 'hold';
         return `<div class="indicator-item">
             <span class="indicator-name">${key}</span>
-            <span class="indicator-value signal-${signalClass}">${value}</span>
+            <span class="indicator-value signal-${signalClass}">${value || 'N/A'}</span>
         </div>`;
     }).join('');
 }
