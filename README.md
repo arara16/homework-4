@@ -168,3 +168,4 @@ cd "Домашна 4/frontend"
 npm install
 npm start
 ```
+# Updated for Vercel redeploy Wed Feb  4 04:29:41 CET 2026
