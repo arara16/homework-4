@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoVault Analytics - Homework 3</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔐 CryptoVault Analytics</h1>
+            <p>Homework 3 - Technical Analysis, LSTM Prediction & Sentiment Analysis</p>
+            <nav>
+                <button onclick="showScreen('dashboard')" class="nav-btn">Dashboard</button>
+                <button onclick="showScreen('symbols')" class="nav-btn">Symbols</button>
+            </nav>
+        </header>
+
+        <div id="dashboard" class="screen">
+            <h2>📊 Dashboard</h2>
+            <div id="summary" class="summary-box">
+                <p>Loading market summary...</p>
+            </div>
+        </div>
+
+        <div id="symbols" class="screen hidden">
+            <h2>💰 Cryptocurrency Symbols</h2>
+            <div class="table-container">
+                <table id="symbolTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Symbol</th>
+                            <th>Price</th>
+                            <th>24h Change</th>
+                            <th>24h Volume</th>
+                            <th>Trades</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="7">Loading symbols...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="analysis" class="screen hidden">
+            <h2>📈 Analysis for <span id="analysisSymbol"></span></h2>
+            <button onclick="showScreen('symbols')" class="back-btn">← Back to Symbols</button>
+            <div id="analysisContent" class="analysis-content">
+                <p>Loading analysis...</p>
+            </div>
+        </div>
+
+        <footer>
+            <p>Team: Dragana Niseva (236041), Dardan Mehmedi (231534), Dino Stojkoski (211226)</p>
+            <p>Software Design and Architecture - Homework 3 - December 2025</p>
+        </footer>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

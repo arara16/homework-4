@@ -1,0 +1,50 @@
+spring:
+  application:
+    name: cryptovault-api-gateway
+  cloud:
+    gateway:
+      routes:
+        # Homework 3 compatible routes
+        - id: price-symbols
+          uri: ${PRICE_SERVICE_URL:http://price-service:5001}
+          predicates:
+            - Path=/api/symbols/**
+          filters:
+            - RewritePath=/api/symbols/(?<segment>.*), /api/symbols/$\{segment}
+        - id: price-analysis
+          uri: ${PRICE_SERVICE_URL:http://price-service:5001}
+          predicates:
+            - Path=/api/analysis/**
+          filters:
+            - RewritePath=/api/analysis/(?<segment>.*), /api/analysis/$\{segment}
+        - id: price-service-direct
+          uri: ${PRICE_SERVICE_URL:http://price-service:5001}
+          predicates:
+            - Path=/api/prices/**
+          filters:
+            - RewritePath=/api/prices/(?<segment>.*), /api/prices/$\{segment}
+        - id: ta-service
+          uri: ${TA_SERVICE_URL:http://ta-service:5002}
+          predicates:
+            - Path=/api/technical-analysis/**
+          filters:
+            - RewritePath=/api/technical-analysis/(?<segment>.*), /api/technical-analysis/$\{segment}
+        - id: prediction-service
+          uri: ${PREDICTION_SERVICE_URL:http://prediction-service:5003}
+          predicates:
+            - Path=/api/predict/**
+          filters:
+            - RewritePath=/api/predict/(?<segment>.*), /api/predict/$\{segment}
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: "http://localhost:3000,http://localhost:8080,http://localhost:80"
+            allowedMethods: GET,POST,PUT,DELETE,OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+server:
+  port: ${API_GATEWAY_PORT:8080}
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.gateway: DEBUG
